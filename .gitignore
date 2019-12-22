@@ -1,0 +1,6 @@
+# Objec file 
+main
+*.o
+# Folder 
+/Casos/
+
