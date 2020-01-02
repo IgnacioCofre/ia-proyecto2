@@ -6,8 +6,8 @@ SECTION_HORIZON
 SECTION_SHIFTS
 # Descripcion section_shifts
 E , 480 , 
-D 480 , E
-L , $80 , E|D
+D , 480 , E
+L , 80 , E|D
 
 SECTION_STAFF
 # Descripcion section_staff
