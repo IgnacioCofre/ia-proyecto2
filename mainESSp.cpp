@@ -11,6 +11,7 @@ class Turn {
 	public:
 		string name;
 		int time;
+		// restricciones para el dia siguiente
 		vector <string> restriccion;
 
 		void set_values (string,int, vector <string>);
@@ -29,7 +30,12 @@ void Turn::set_values(string n, int t , vector <string> l ){
 class List_Turns {
 	vector <Turn> list_of_turns;
 	vector <string> turns_names;
+	map <string, vector <string>> turns_restriccions;
+	map <string, int> duration_turn;
+
 	public:
+		void set_values();
+
 		void append_turn(string name, int time, vector<string> restriccions) {
 			Turn new_turn;
 			new_turn.set_values(name, time, restriccions); 	
@@ -37,8 +43,11 @@ class List_Turns {
 			turns_names.push_back(name);
 		}
 
+		void append_turn_restriccions(string turn_name, vector <string> restriccion){
+			turns_restriccions.insert(pair <string, vector <string>> (turn_name, restriccion));
+		}
 		vector <string> get_restriccions (string name){
-			vector <string> rest;
+			vector <string>  rest;
 
 			for (auto i = list_of_turns.begin(); i != list_of_turns.end(); ++i){
 				if((*i).get_name() == name){
@@ -48,14 +57,46 @@ class List_Turns {
 
 			return rest;
 		}
+		void append_duration_turn(string name_turn, int duration){
+			duration_turn.insert(pair <string, int> (name_turn, duration));
+		}
 
-		int get_duration (string name) {
-			for (auto j = list_of_turns.begin(); j != list_of_turns.end(); ++j){
-				if((*j).get_name() == name){
-					return (*j).get_time();
+		int get_duration_turn(string name_turn){
+			// caso de los dias no trabajados
+			if(name_turn == "-"){
+				return 0;
+			} 
+
+			return duration_turn[name_turn];
+		}
+
+		/* 
+			funcion veryfi_restriccion(string, string)
+			verfica que si se cumple la restriccion de los turnos respecto al turno del dia siguiente 
+			return int:
+				0 : restriccion se cumple
+				1 : no se cumple
+		
+		*/
+
+		int verify_restriction(string turn_name, string next_turn){
+			vector <string>  restriccion = turns_restriccions[turn_name];
+			// no verifica si alguno de los dias es libre
+			if (turn_name != "-" && next_turn != "-"){
+				for (auto iter = restriccion.begin(); iter != restriccion.end(); ++ iter ){
+					if (next_turn == *iter){
+						return 1; 
+					}
 				}
-			}	
+			}
+			
+			return 0;		
 
+			
+		}
+
+		int get_size_turns(){
+			return list_of_turns.size();
 		}
 
 		vector <string> get_turns_names() {
@@ -63,6 +104,14 @@ class List_Turns {
 		} 
 
 };
+
+void List_Turns::set_values(){
+	// turno libre con duracion 0 y sin restricciones
+	Turn new_turn;
+	vector<string> empty_list;
+	new_turn.set_values("-", 0,  empty_list);
+	list_of_turns.push_back(new_turn);
+}
 
 class Staff {
 	string name;
@@ -82,33 +131,6 @@ class Staff {
 	public:
 		void set_values (string, std::map<string , int>, int,int,  int,int,int, int);
 		string get_name(){return name;}
-		
-		int get_MaxT(string name){
-			if(MaxT.find(name) != MaxT.end()){
-				return MaxT[name];
-			}
-			else{
-				return 0;
-			}
-		}
-		int get_MaxM(){
-			return MaxM;
-		}
-		int get_MinM(){
-			return MinM;
-		}
-		int get_MaxCT(){
-			return MaxCT;
-		}
-		int get_MinCT(){
-			return MinCT;
-		}
-		int get_MinCDL(){
-			return MinCDL;
-		}
-		int get_MaxFD(){
-			return MaxFD;
-		}
 
 		void set_days_off(vector <int> list_days_off){
 			days_off = list_days_off;
@@ -138,50 +160,103 @@ void Staff::set_values(string n, std::map<string, int> dict,int maxm, int minm, 
 class List_Staff {
 	vector <string> staff_names ;
 	vector <Staff> list_of_staff;
+	//MaxT[int trabajador][string turno] = int cantidad
+	vector <map<string , int>> MaxT;
+	vector <vector <int>> staff_data;
+
+
 	public:
-	void append_staff(string name, std::map<string, int> dict, int maxm, int minm, int maxct, int minct, int mincdl, int maxfd) {
-			Staff new_staff;
-			new_staff.set_values(name, dict,maxm,  minm,  maxct,  minct,  mincdl,  maxfd); 	
-			list_of_staff.push_back(new_staff);
-			staff_names.push_back(name);
-		}
-	vector <string> get_staff_names(){
-		return staff_names;
-	}	
-	/*funciones get sobre staff*/
-
-	int set_days_off(string name_staff, vector <int> list_days_off){
-		for(auto iter = list_of_staff.begin(); iter!= list_of_staff.end(); ++iter){
-			if((*iter).get_name() == name_staff){
-				(*iter).set_days_off(list_days_off);
-				return 1;
+		void append_staff(string name, std::map<string, int> dict, int maxm, int minm, int maxct, int minct, int mincdl, int maxfd) {
+				Staff new_staff;
+				new_staff.set_values(name, dict,maxm,  minm,  maxct,  minct,  mincdl,  maxfd); 	
+				list_of_staff.push_back(new_staff);
+				staff_names.push_back(name);
 			}
+
+		vector <string> get_staff_names(){
+			return staff_names;
 		}
 
-		return 0;
-	}
+		string get_staff_name(int index){
+			return staff_names[index];
+		}	
+		/*funciones get sobre staff*/
 
-	int set_shift_on_request(string name_staff, string day_turn, int peso){
-		for(auto iter = list_of_staff.begin(); iter!= list_of_staff.end(); ++iter){
-			if((*iter).get_name() == name_staff){
-				(*iter).set_shift_on_request(day_turn, peso);
-				return 1;
+		int set_days_off(string name_staff, vector <int> list_days_off){
+			for(auto iter = list_of_staff.begin(); iter!= list_of_staff.end(); ++iter){
+				if((*iter).get_name() == name_staff){
+					(*iter).set_days_off(list_days_off);
+					return 1;
+				}
 			}
+
+			return 0;
 		}
 
-		return 0;
-	}
-
-	int set_shift_off_request(string name_staff, string day_turn, int peso){
-		for(auto iter = list_of_staff.begin(); iter!= list_of_staff.end(); ++iter){
-			if((*iter).get_name() == name_staff){
-				(*iter).set_shift_off_request(day_turn, peso);
-				return 1;
+		int set_shift_on_request(string name_staff, string day_turn, int peso){
+			for(auto iter = list_of_staff.begin(); iter!= list_of_staff.end(); ++iter){
+				if((*iter).get_name() == name_staff){
+					(*iter).set_shift_on_request(day_turn, peso);
+					return 1;
+				}
 			}
+
+			return 0;
 		}
 
-		return 0;
-	}
+		int set_shift_off_request(string name_staff, string day_turn, int peso){
+			for(auto iter = list_of_staff.begin(); iter!= list_of_staff.end(); ++iter){
+				if((*iter).get_name() == name_staff){
+					(*iter).set_shift_off_request(day_turn, peso);
+					return 1;
+				}
+			}
+
+			return 0;
+		}
+
+		/* funciones nuevas*/
+
+		void set_MaxT(map <string, int> dict){
+			MaxT.push_back(dict);
+		}
+
+		void set_staff_data(int maxm, int minm, int maxct, int minct, int mincdl, int maxfd){
+			vector <int> data_aux;
+			data_aux.push_back(maxm);
+			data_aux.push_back(minm);
+			data_aux.push_back(maxct);
+			data_aux.push_back(minct);
+			data_aux.push_back(mincdl);
+			data_aux.push_back(maxfd);
+
+			staff_data.push_back(data_aux);
+		}
+
+		int get_MaxT(int staff, string turn){
+			return MaxT[staff][turn];
+		}
+
+		int get_MaxM(int trabajador){
+			return staff_data[trabajador][0];
+		}
+		int get_MinM(int trabajador){
+			return staff_data[trabajador][1];
+		}
+		int get_MaxCT(int trabajador){
+			return staff_data[trabajador][2];
+		}
+		int get_MinCT(int trabajador){
+			return staff_data[trabajador][3];
+		}
+		int get_MinCDL(int trabajador){
+			return staff_data[trabajador][4];
+		}
+		int get_MaxFD(int trabajador){
+			return staff_data[trabajador][5];
+		}
+
+		
 
 };
 
@@ -214,27 +289,110 @@ vector <string> split(string line){
 	return tokens;	
 };
 
+
+int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string>> horario, int horizon){
+	cout << "Lista de restricciones no cumplidas encontradas:\n";
+	
+	int count_trabajador = 0;
+	vector <string> turn_names = list_turns.get_turns_names();
+
+	for(auto trabajador = horario.begin(); trabajador != horario.end() ; ++trabajador){
+		vector <string> horario_trabajador = *trabajador;
+		
+		int tiempo_trabajado = 0;
+		map <string, int> dict_cantidad_turnos;
+		for(auto turn_name = turn_names.begin(); turn_name != turn_names.end(); ++turn_name){
+			dict_cantidad_turnos.insert(pair <string,int> (*turn_name, 0));
+		}
+
+		for(int dia = 0 ; dia < horizon; ++dia){
+
+			// primera restriccion [restriccion de turnos seguidos]
+			string actual_day = horario_trabajador[dia];
+
+			if(dia < (horizon-1)){
+				string next_day =horario_trabajador[dia+1];
+				
+				// cout << "turno dia_1 :" << actual_day << "\n";
+				// cout << "turno dia_2 :" << next_day << "\n"; 
+				// revisa si no se cumple la restriccion de los turnos seguidos
+				
+				if(list_turns.verify_restriction(actual_day, next_day) == 1 ){
+					string name = list_staff.get_staff_name(count_trabajador);
+					cout << "Restriccion de turnos seguidos no se cumple: " << "\n";
+					cout << "trabajador:  " << name << "\n";
+					cout << "turno dia_1: " << actual_day << "\n";
+					cout << "turno dia_2: " << next_day << "\n"; 
+
+				}
+			}
+
+			// segunda restriccion [cantidad de turnos maxima]
+			dict_cantidad_turnos[actual_day] += 1;
+
+			// tercera restriccion [tiempo maximo y minimo de tiempo por trabajador]
+			tiempo_trabajado += list_turns.get_duration_turn(actual_day);
+
+		}
+
+		// verificacion segunda restriccion
+
+		for(auto turn_name = turn_names.begin(); turn_name != turn_names.end() ; ++turn_name){
+			if(dict_cantidad_turnos[*turn_name] >  list_staff.get_MaxT(count_trabajador, *turn_name)){
+				cout << "Restricciones MaxT no cumplidas\n";
+				cout << "Trabajador:\t" << list_staff.get_staff_name(count_trabajador) << "\n";
+				cout << "Turn:\t" << *turn_name << "\n";
+				cout << "MaxT:\t" << list_staff.get_MaxT(count_trabajador, *turn_name) << "\n";
+				cout << "Total:\t" << dict_cantidad_turnos[*turn_name] << "\n";
+			}
+		}
+
+		// verificacion de tercera restriccion
+		if(tiempo_trabajado > list_staff.get_MaxM(count_trabajador)){
+			cout << "MaxM restriccion [Trabajador]: " << list_staff.get_staff_name(count_trabajador) <<"\n";  
+			cout << "MaxM:   " << list_staff.get_MaxM(count_trabajador)<< "\n";
+			cout << "tiempo: " <<  tiempo_trabajado << "\n";
+		}
+
+		if(tiempo_trabajado < list_staff.get_MinM(count_trabajador)){
+			cout << "MinM restriccion [Trabajador]: " << list_staff.get_staff_name(count_trabajador) <<"\n";  
+			cout << "MaxM:   " << list_staff.get_MaxM(count_trabajador)<< "\n";
+			cout << "tiempo: " <<  tiempo_trabajado << "\n";
+		}
+
+		// cout << "tiempo: " << list_staff.get_staff_name(count_trabajador) << ": " << tiempo_trabajado << "\n";
+
+		tiempo_trabajado = 0; 
+
+		count_trabajador += 1;
+		
+	}
+
+	return 0;
+}
  
 int main () {
 
 	string str;
-	/* nombre de archivo por defecto */
-	string file_name = "caso1.txt"; 
+	/* nombre de archivo por defecto */ 
+	string file_name = "Instance0.txt"; 
 	/* casos de prueba deben estar en la carpeta "Casos" */
-	std::ifstream file("Casos//"+file_name);
+	std::ifstream file("Instances//"+file_name);
 
 	if(file.fail()){
 		cout << "caso de prueba no encontrado\n";
 	
 	} else {
 
-		/* lista con el archivo */
+		/* lista con las lineas del archivo */
 		list<string> list_aux;
 
 		while (std::getline(file,str))
 		{
-			if(!std::regex_match (str, std::regex("(^#[\\s\\S]*)")) && str != "") {
+			if(!std::regex_match (str, std::regex("(^#[\\s\\S]*)")) && str != "" ) {
+				
 				list_aux.push_back(str);
+
 			}
 
 		}
@@ -246,13 +404,14 @@ int main () {
 		string HORIZON = "SECTION_HORIZON";
 		string SHIFTS = "SECTION_SHIFTS";
 		string STAFF = "SECTION_STAFF";
-		string DAY_OFF = "SECTION_DAY_OFF";
+		string DAY_OFF = "SECTION_DAYS_OFF";
 		string SHIFT_ON_REQUESTS = "SECTION_SHIFT_ON_REQUESTS";
 		string SHIFT_OFF_REQUESTS = "SECTION_SHIFT_OFF_REQUESTS";
 		string COVER = "SECTION_COVER";
 
 		int Horizon;
 		List_Turns turn_shifts;
+		turn_shifts.set_values();
 		List_Staff staff_list;
 		Cover cover_list;
 
@@ -273,6 +432,7 @@ int main () {
 
 			if(in_set_labels != set_labels.end()){
 				label = *line;
+				cout << label << "\n";
 			}
 			
 			else{
@@ -286,14 +446,25 @@ int main () {
 				else if(label == SHIFTS){
 					string parse_line = std::regex_replace (*line,comas," ");
 					vector <string> split_line = split(parse_line);
+					// split_line[0] = name_turn
+					// split_line[1] = duration
+					// split_line[2] = restricction
+					// turn_shifts.append_turn(split_line[0], stoi(split_line[1]), split(parce_rest));
+
+					string name_turn = split_line[0];
+					int duration = stoi(split_line[1]);
 
 					if (split_line.size() == 3){
 						string parce_rest = std::regex_replace (split_line[2],separadores," ");
-						turn_shifts.append_turn(split_line[0], stoi(split_line[1]), split(parce_rest));
+						turn_shifts.append_turn(name_turn, duration, split(parce_rest));
+						turn_shifts.append_turn_restriccions(name_turn,  split(parce_rest));
+						turn_shifts.append_duration_turn(name_turn, duration);
 					}
 					else if (split_line.size() == 2){
 						vector <string> rest;
-						turn_shifts.append_turn(split_line[0], stoi(split_line[1]), rest);
+						turn_shifts.append_turn(name_turn, duration, rest);
+						turn_shifts.append_turn_restriccions(name_turn, rest);
+						turn_shifts.append_duration_turn(name_turn, duration);
 					}
 					else {
 						cout << "error of format: " << SHIFTS << "\n";
@@ -312,14 +483,21 @@ int main () {
 					string aux_line = std::regex_replace (split_line[1],separadores," "); 	
 					vector <string> split_aux = split(aux_line);
 
-
+					// crea el diccionario MaxT
 					for (auto i = split_aux.begin();i!=split_aux.end();++i){
 						string aux_equal = std::regex_replace (*i,equal," ");
+
 						vector <string> aux_MatT = split(aux_equal);
 						MaxT.insert(pair <string, int> (aux_MatT[0], stoi(aux_MatT[1]))); 
+						
 					}
 
 					staff_list.append_staff(split_line[0], MaxT, stoi(split_line[2]), stoi(split_line[3]), stoi(split_line[4]), stoi(split_line[5]), stoi(split_line[6]), stoi(split_line[7]));
+
+					/*funciones nuevas*/
+
+					staff_list.set_MaxT(MaxT);
+					staff_list.set_staff_data(stoi(split_line[2]), stoi(split_line[3]), stoi(split_line[4]), stoi(split_line[5]), stoi(split_line[6]), stoi(split_line[7]));
 
 				}
 
@@ -379,23 +557,72 @@ int main () {
 				}
 
 				else{
-					cout << "Fail in the format case\n";
-					cout << *line << "\n";
+					cout << "Fail in the format case: "<< *line << "\n" ;
 				} 
 
 			}
 
 		}	
 
-		vector <int> cover_inf = cover_list.get_section_cover(2,"L");
-		for(auto i = cover_inf.begin(); i!= cover_inf.end(); ++i){
-			cout << *i << "\n";
+		cout << "Termino del parseo del archivo\n";
+
+		/* Termino de parseo del archivo*/
+
+
+		/* Comienzo de pruebas de soluciones */
+
+		map <string, vector <string>> solution;
+		vector <vector <string>> solution_method_2;
+
+		std::ifstream file("Instances//solution.txt");
+
+		if(file.fail()){
+			cout << "caso de prueba [solucion] no encontrado\n";
+	
+		} else {
+
+			/* lista con las lineas del archivo */
+			list<string> line_solution;
+
+			while (std::getline(file,str))
+			{
+				if(!std::regex_match (str, std::regex("(^#[\\s\\S]*)")) && str != "" ) {
+					
+					line_solution.push_back(str);
+
+				}
+
+			}
+
+			file.close();
+
+
+			for (auto line = line_solution.begin(); line != line_solution.end(); ++line){
+				// string parse_line = std::regex_replace (*line,separadores," ");
+				// vector <string> trabajador_horario = split(parse_line);
+				// string trabajador = trabajador_horario[0];
+				// string horario_aux = std::regex_replace (trabajador_horario[1],comas," ");
+				// vector <string> horario = split(horario_aux);
+				// solution.insert(pair <string , vector <string>> (trabajador, horario));
+				
+				/* solucion solo con vectores */
+
+				string parse_line = std::regex_replace (*line,separadores," ");
+				vector <string> trabajador_horario = split(parse_line);
+				string horario_aux = std::regex_replace (trabajador_horario[1],comas," ");
+				vector <string> horario = split(horario_aux);
+				solution_method_2.push_back(horario);
+				
+			}
+
+			/* Ejecucion del modelo sobre las soluciones de prueba */
+			//Model(List_Turns list_turns, List_Staff list_staff,  map <string, vector <string>> horario, int horizon)
+			cout << "Inicio de pruebas del modelo\n";
+			//Model(turn_shifts, staff_list, solution, Horizon);
+			Model2(turn_shifts, staff_list, solution_method_2, Horizon);
+
 		}
 
-		// cout << "horizon: " << Horizon << "\n";
-		
-
 	}
-
     return 0;
 }
