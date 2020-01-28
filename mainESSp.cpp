@@ -62,55 +62,9 @@ class List_Turns {
 
 };
 
-
-class Staff {
-	string name;
-	std::map<string , int> MaxT;
-	int MaxM;
-	int MinM;
-	int MaxCT;
-	int MinCT;
-	int MinCDL;
-	int MaxFD;
-
-	vector <int> days_off;
-
-	std::map<string , int> shift_on_request;
-	std::map<string , int> shift_off_request;
-
-	public:
-		void set_values (string, std::map<string , int>, int,int,  int,int,int, int);
-		string get_name(){return name;}
-
-		void set_days_off(vector <int> list_days_off){
-			days_off = list_days_off;
-		}
-
-		void set_shift_on_request(string day_turn, int peso){
-			shift_on_request.insert(pair <string,int> (day_turn,peso));
-		}
-
-		void set_shift_off_request(string day_turn, int peso){
-			shift_off_request.insert(pair <string,int> (day_turn,peso));
-		}
-
-};
-
-void Staff::set_values(string n, std::map<string, int> dict,int maxm, int minm, int maxct, int minct, int mincdl, int maxfd){
-	name = n;
-	MaxT = dict;
-	MaxM = maxm;
-	MinM = minm;
-	MaxCT = maxct;
-	MinCT = minct;
-	MinCDL = mincdl;
-	MaxFD = maxfd;
-}
-
 class List_Staff {
 	vector <string> staff_names ;
 	map <string, int> staff_index;
-	vector <Staff> list_of_staff;
 	//MaxT[int [trabajador][string turno] = int cantidad
 	vector <map<string , int>> MaxT;
 	//[maxm, minm, maxct, minct, mincdl, maxfd]
@@ -119,43 +73,32 @@ class List_Staff {
 	vector <vector <int>> days_off;
 	 
 	// shift on request
-	vector <vector <int>> shift_on_request_empleado;
-	vector <vector <int>> shift_on_request_dia;
-	vector <vector <string>> shift_on_request_turno;
-	vector <vector <int>> shift_on_request_peso;
+	vector <int> shift_on_request_empleado;
+	vector <int> shift_on_request_dia;
+	vector <string> shift_on_request_turno;
+	vector <int> shift_on_request_peso;
 
 	// shift off request
-
-	vector <vector <int>> shift_off_request_empleado;
-	vector <vector <int>> shift_off_request_dia;
-	vector <vector <string>> shift_off_request_turno;
-	vector <vector <int>> shift_off_request_peso;
+	vector <int> shift_off_request_empleado;
+	vector <int> shift_off_request_dia;
+	vector <string> shift_off_request_turno;
+	vector <int> shift_off_request_peso;
 
 	public:
-		void append_staff(string name, std::map<string, int> dict, int maxm, int minm, int maxct, int minct, int mincdl, int maxfd) {
-				Staff new_staff;
-				new_staff.set_values(name, dict,maxm,  minm,  maxct,  minct,  mincdl,  maxfd); 	
-				list_of_staff.push_back(new_staff);
-				staff_names.push_back(name);
-			}
-
-		vector <string> get_staff_names(){
-			return staff_names;
-		}
-
-		string get_staff_name(int index){
-			return staff_names[index];
-		}	
 
 		void set_shift_on_request(string name_staff, int day, string turn, int peso){
-			
+			shift_on_request_empleado.push_back(staff_index[name_staff]);
+			shift_on_request_dia.push_back(day);
+			shift_on_request_turno.push_back(turn);
+			shift_on_request_peso.push_back(peso);
 		}
 
-		int set_shift_off_request(string name_staff, int day, string turn, int peso){
-
+		void set_shift_off_request(string name_staff, int day, string turn, int peso){
+			shift_off_request_empleado.push_back(staff_index[name_staff]);
+			shift_off_request_dia.push_back(day);
+			shift_off_request_turno.push_back(turn);
+			shift_off_request_peso.push_back(peso);
 		}
-
-		/* funciones nuevas*/
 
 		void set_days_off(int horizon,  vector <int> list_days_off){
 			days_off.push_back(list_days_off);
@@ -165,8 +108,12 @@ class List_Staff {
 			MaxT.push_back(dict);
 		}
 
-		void set_staff_data(int maxm, int minm, int maxct, int minct, int mincdl, int maxfd){
+		void set_staff_data(string name, int maxm, int minm, int maxct, int minct, int mincdl, int maxfd){
+			staff_names.push_back(name);
+			staff_index.insert(pair <string, int> (name, staff_index.size()));
+
 			vector <int> data_aux;
+			
 			data_aux.push_back(maxm);
 			data_aux.push_back(minm);
 			data_aux.push_back(maxct);
@@ -200,9 +147,50 @@ class List_Staff {
 			return staff_data[trabajador][5];
 		}
 
-		vector <vector <int>> get_days_off(int empleado, int dia){
+		vector <vector <int>> get_days_off(){
 			return days_off;
+		}
+
+
+		vector <int> get_shift_on_request_empleado(){	
+			return shift_on_request_empleado;
 		}	
+		vector <int> get_shift_on_request_dia(){	
+			return shift_on_request_dia;
+		}	
+		vector <string> get_shift_on_request_turno(){	
+			return shift_on_request_turno;
+		}	
+		vector <int> get_shift_on_request_peso(){	
+			return shift_on_request_peso;
+		}	
+
+
+		vector <int> get_shift_off_request_empleado(){	
+			return shift_on_request_empleado;
+		}	
+		vector <int> get_shift_off_request_dia(){	
+			return shift_on_request_dia;
+		}	
+		vector <string> get_shift_off_request_turno(){	
+			return shift_on_request_turno;
+		}	
+		vector <int> get_shift_off_request_peso(){	
+			return shift_on_request_peso;
+		}	
+	
+
+		vector <string> get_staff_names(){
+			return staff_names;
+		}
+
+		string get_staff_name(int index){
+			return staff_names[index];
+		}
+
+		int get_staff_quantity(){
+			return staff_names.size();
+		}
 
 };
 
@@ -238,11 +226,12 @@ vector <string> split(string line){
 
 
 int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string>> horario, int horizon){
-	cout << "Lista de restricciones no cumplidas encontradas:\n";
+	cout << "\nLista de restricciones no cumplidas encontradas:\n";
 	
 	int count_trabajador = 0;
 	vector <string> turn_names = list_turns.get_turns_names();
 
+	// iteracion sobre horario[empleado]
 	for(auto trabajador = horario.begin(); trabajador != horario.end() ; ++trabajador){
 		vector <string> horario_trabajador = *trabajador;
 		
@@ -252,6 +241,11 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 			dict_cantidad_turnos.insert(pair <string,int> (*turn_name, 0));
 		}
 
+		//variables utilizada en la quinta restricicon [cantidad de turnos maxima]
+		int next_day_off = -1; 
+		int MaxCT = list_staff.get_MaxCT(count_trabajador);
+
+		// iteracion sobre horario[empleado][dia]
 		for(int dia = 0 ; dia < horizon; ++dia){
 
 			// primera restriccion [restriccion de turnos seguidos]
@@ -280,6 +274,30 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 			// tercera restriccion [tiempo maximo y minimo de tiempo por trabajador]
 			tiempo_trabajado += list_turns.get_duration_turn(actual_day);
 
+			// quinta restriccion [cantidad maxima de dias trabajados]
+			if(actual_day != "-" && dia+MaxCT < horizon && dia > next_day_off){
+				int cont_days = 1;
+				int cond = 1;
+				int dia_iter =  dia + 1;
+
+				while(cond == 1 && dia_iter <= dia+MaxCT ){
+					if(horario_trabajador[dia_iter] == "-"){
+						next_day_off = dia_iter;
+						cond = 0;
+					}
+					else{
+						++cont_days;
+						++dia_iter;
+					}
+				}
+
+				if(cont_days>MaxCT){
+					cout << "restriccion maxima de dias trabajados no se cumple\n";
+					cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
+				}
+			}
+
+		
 		}
 
 		// verificacion segunda restriccion
@@ -303,16 +321,30 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 
 		if(tiempo_trabajado < list_staff.get_MinM(count_trabajador)){
 			cout << "MinM restriccion [Trabajador]: " << list_staff.get_staff_name(count_trabajador) <<"\n";  
-			cout << "MaxM:   " << list_staff.get_MaxM(count_trabajador)<< "\n";
+			cout << "MinM:   " << list_staff.get_MinM(count_trabajador)<< "\n";
 			cout << "tiempo: " <<  tiempo_trabajado << "\n";
 		}
 
 		// cout << "tiempo: " << list_staff.get_staff_name(count_trabajador) << ": " << tiempo_trabajado << "\n";
-
+		
 		tiempo_trabajado = 0; 
 
 		count_trabajador += 1;
 		
+	}
+
+	// cuarta restriccion [dias libres]
+
+	int cantidad_empleados = list_staff.get_staff_quantity();
+	vector <vector <int>> days_off = list_staff.get_days_off();
+	
+	for(int emp = 0; emp < cantidad_empleados; ++emp){
+		for(auto dia = days_off[emp].begin() ; dia != days_off[emp].end(); ++dia){
+			if(horario[emp][*dia] != "-"){
+				cout << "Restricciones Days off : trabajador " << emp << ", dia " << *dia << "\n"; 
+			}
+			
+		}
 	}
 
 	return 0;
@@ -436,12 +468,12 @@ int main () {
 						
 					}
 
-					staff_list.append_staff(split_line[0], MaxT, stoi(split_line[2]), stoi(split_line[3]), stoi(split_line[4]), stoi(split_line[5]), stoi(split_line[6]), stoi(split_line[7]));
+					//staff_list.append_staff(split_line[0], MaxT, stoi(split_line[2]), stoi(split_line[3]), stoi(split_line[4]), stoi(split_line[5]), stoi(split_line[6]), stoi(split_line[7]));
 
 					/*funciones nuevas*/
 
 					staff_list.set_MaxT(MaxT);
-					staff_list.set_staff_data(stoi(split_line[2]), stoi(split_line[3]), stoi(split_line[4]), stoi(split_line[5]), stoi(split_line[6]), stoi(split_line[7]));
+					staff_list.set_staff_data(split_line[0],stoi(split_line[2]), stoi(split_line[3]), stoi(split_line[4]), stoi(split_line[5]), stoi(split_line[6]), stoi(split_line[7]));
 
 				}
 
