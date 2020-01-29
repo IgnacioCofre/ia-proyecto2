@@ -242,8 +242,12 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 		}
 
 		//variables utilizada en la quinta restricicon [cantidad de turnos maxima]
-		int next_day_off = -1; 
+		//int next_day_off = -1; 
+		int cont_dias_libres = 0;
+		int cont_dias_trabajados = 0;
 		int MaxCT = list_staff.get_MaxCT(count_trabajador);
+		int MinCT = list_staff.get_MinCT(count_trabajador);
+		int MinCDL = list_staff.get_MinCDL(count_trabajador);
 
 		// iteracion sobre horario[empleado][dia]
 		for(int dia = 0 ; dia < horizon; ++dia){
@@ -268,37 +272,67 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 				}
 			}
 
+			
+			if(actual_day == "-"){
+				++cont_dias_libres;
+
+				if(cont_dias_trabajados != 0){
+					// quinta restriccion [cantidad maxima de dias trabajados consecutivos]
+					if(cont_dias_trabajados > MaxCT){
+						cout << "restriccion maxima de dias trabajados no se cumple\n";
+						cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
+					}
+					// sexta restriccion [cantidad minima de dias trabajados consecutivos]
+					if(cont_dias_trabajados < MinCT){
+						cout << "restriccion minima de dias trabajados no se cumple\n";
+						cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
+					}
+
+					cont_dias_trabajados = 0;
+				}
+			}
+
+			if(actual_day != "-"){
+				++cont_dias_trabajados;
+				
+				// septima restriccion [cantidad de minima de dias libres consecutivos]
+				if(cont_dias_libres != 0){
+
+					if(cont_dias_libres < MinCDL){
+						cout << "restriccion minima de dias libres no se cumple\n";
+						cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
+					}
+
+					cont_dias_libres = 0;
+				} 
+			}
+
 			// segunda restriccion [cantidad de turnos maxima]
 			dict_cantidad_turnos[actual_day] += 1;
 
 			// tercera restriccion [tiempo maximo y minimo de tiempo por trabajador]
 			tiempo_trabajado += list_turns.get_duration_turn(actual_day);
-
-			// quinta restriccion [cantidad maxima de dias trabajados]
-			if(actual_day != "-" && dia+MaxCT < horizon && dia > next_day_off){
-				int cont_days = 1;
-				int cond = 1;
-				int dia_iter =  dia + 1;
-
-				while(cond == 1 && dia_iter <= dia+MaxCT ){
-					if(horario_trabajador[dia_iter] == "-"){
-						next_day_off = dia_iter;
-						cond = 0;
-					}
-					else{
-						++cont_days;
-						++dia_iter;
-					}
-				}
-
-				if(cont_days>MaxCT){
-					cout << "restriccion maxima de dias trabajados no se cumple\n";
-					cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
-				}
-			}
-
 		
 		}
+
+		// verificacion de quinta y sexta restriccion
+		if(cont_dias_trabajados != 0){
+
+			if(cont_dias_trabajados > MaxCT){
+				cout << "restriccion maxima de dias trabajados no se cumple\n";
+				cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
+			}
+			else if(cont_dias_trabajados < MinCT){
+				cout << "restriccion minima de dias trabajados no se cumple\n";
+				cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
+			}
+		}
+
+		// verificacion de septima restriccion
+		if(cont_dias_libres != 0 && cont_dias_libres < MinCDL){
+			cout << "restriccion minima de dias libres no se cumple\n";
+			cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
+		} 
 
 		// verificacion segunda restriccion
 
@@ -467,9 +501,7 @@ int main () {
 						MaxT.insert(pair <string, int> (aux_MatT[0], stoi(aux_MatT[1]))); 
 						
 					}
-
-					//staff_list.append_staff(split_line[0], MaxT, stoi(split_line[2]), stoi(split_line[3]), stoi(split_line[4]), stoi(split_line[5]), stoi(split_line[6]), stoi(split_line[7]));
-
+					
 					/*funciones nuevas*/
 
 					staff_list.set_MaxT(MaxT);
