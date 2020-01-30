@@ -167,16 +167,16 @@ class List_Staff {
 
 
 		vector <int> get_shift_off_request_empleado(){	
-			return shift_on_request_empleado;
+			return shift_off_request_empleado;
 		}	
 		vector <int> get_shift_off_request_dia(){	
-			return shift_on_request_dia;
+			return shift_off_request_dia;
 		}	
 		vector <string> get_shift_off_request_turno(){	
-			return shift_on_request_turno;
+			return shift_off_request_turno;
 		}	
 		vector <int> get_shift_off_request_peso(){	
-			return shift_on_request_peso;
+			return shift_off_request_peso;
 		}	
 	
 
@@ -381,6 +381,34 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 		}
 	}
 
+	// octava restriciccion [shift on requests]
+	vector <int> on_empleado = list_staff.get_shift_on_request_empleado();
+	vector <int> on_dia = list_staff.get_shift_on_request_dia();
+	vector <string> on_turno = list_staff.get_shift_on_request_turno();
+	vector <int> on_peso = list_staff.get_shift_on_request_peso();
+
+	int size_on = on_empleado.size();
+
+	for(int request = 0; request < size_on ; ++request){
+		if(horario[on_empleado[request]][on_dia[request]] != on_turno[request]){
+			cout << "[shift on request] empleado: " << list_staff.get_staff_name(on_empleado[request]) << ", dia: "<< on_dia[request] <<", peso: "<< on_peso[request]<<"\n";
+		}
+	}
+
+	// novena restriccion [shift off requests]
+	vector <int> off_empleado = list_staff.get_shift_off_request_empleado();
+	vector <int> off_dia = list_staff.get_shift_off_request_dia();
+	vector <string> off_turno = list_staff.get_shift_off_request_turno();
+	vector <int> off_peso = list_staff.get_shift_off_request_peso();
+
+	int size_off = off_empleado.size();
+
+	for(int request = 0; request < size_off ; ++request){
+		if(horario[off_empleado[request]][off_dia[request]] == off_turno[request]){
+			cout << "[shift off request] empleado: " << list_staff.get_staff_name(off_empleado[request]) << ", dia: "<< off_dia[request] <<", peso: "<< off_peso[request]<<"\n";
+		}
+	}
+
 	return 0;
 }
  
@@ -501,7 +529,7 @@ int main () {
 						MaxT.insert(pair <string, int> (aux_MatT[0], stoi(aux_MatT[1]))); 
 						
 					}
-					
+
 					/*funciones nuevas*/
 
 					staff_list.set_MaxT(MaxT);
@@ -555,6 +583,7 @@ int main () {
 					int peso = stoi(aux_line[3]);
 					
 					staff_list.set_shift_off_request(staff_name, dia, turno, peso);
+
 				}
 
 				else if(label == COVER){
