@@ -10,12 +10,14 @@ class List_Turns {
 	vector <string> turns_names;
 	map <string, vector <string>> turns_restriccions;
 	map <string, int> duration_turn;
+	map <string, int> turn_index;
 
 	public:
 
 		void append_turn_restriccions(string turn_name, vector <string> restriccion){
 			turns_names.push_back(turn_name);
 			turns_restriccions.insert(pair <string, vector <string>> (turn_name, restriccion));
+			turn_index.insert(pair <string, int> (turn_name, turn_index.size()));
 		}
 
 		void append_duration_turn(string name_turn, int duration){
@@ -58,6 +60,10 @@ class List_Turns {
 
 		vector <string> get_turns_names() {
 			return turns_names;
+		} 
+		
+		map <string, int> get_turns_index(){
+			return turn_index;
 		} 
 
 };
@@ -195,22 +201,40 @@ class List_Staff {
 };
 
 class Cover{
-	vector <std::map<string , vector <int>>> list_of_covers;
+
+	vector <vector <vector <int>>> matrix_of_covers;
+
 	public:
-		void set_values(int horizon){
-			for(auto i = 0; i!= horizon; ++i){
-				map <string , vector <int>> dict;
-				list_of_covers.push_back(dict);
-			}
-		}
 		void add_values(int dia, string turno, vector <int> datos){
+			int actual_size_matrix =  matrix_of_covers.size();
+			if(dia == actual_size_matrix){
+				vector <vector <int>> aux_matrix;
+				aux_matrix.push_back(datos);
+				matrix_of_covers.push_back(aux_matrix);
+
+			}
+			else{
+				matrix_of_covers[dia].push_back(datos);
+			}
 			
-			list_of_covers[dia].insert(pair <string , vector <int>> (turno, datos));
 			
 		}
 
-		vector <int> get_section_cover(int dia, string turn){
-			return list_of_covers[dia][turn];
+		void print_section_cover(){
+			int dias = matrix_of_covers.size();
+			int turnos = matrix_of_covers[0].size(); 
+
+			for(int dia = 0 ; dia < dias; ++dia){
+				for(int turno = 0 ; turno < turnos ; ++turno){
+					cout << matrix_of_covers[dia][turno][0] << " , ";
+					cout << matrix_of_covers[dia][turno][1] << " , ";
+					cout << matrix_of_covers[dia][turno][2] << "\n"; 
+				}
+			}
+		}
+
+		vector <vector <vector <int>>> get_section_cover(){
+			return matrix_of_covers;
 		}
 
 };
@@ -225,11 +249,20 @@ vector <string> split(string line){
 };
 
 
-int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string>> horario, int horizon){
+int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string>> horario, Cover cover, int horizon){
 	cout << "\nLista de restricciones no cumplidas encontradas:\n";
 	
 	int count_trabajador = 0;
 	vector <string> turn_names = list_turns.get_turns_names();
+	int cantidad_turnos = turn_names.size();
+
+	//diccionario usado en la novena restriccion
+	map <string, int> turn_index = list_turns.get_turns_index();
+	vector <vector <vector <int>>> cover_matrix = cover.get_section_cover();
+
+	//variables usadas en la decima restriccion
+	vector <int> aux_vector(list_staff.get_staff_quantity(), 0);
+	vector <vector <int>> actual_cover(horizon,aux_vector);
 
 	// iteracion sobre horario[empleado]
 	for(auto trabajador = horario.begin(); trabajador != horario.end() ; ++trabajador){
@@ -294,6 +327,10 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 
 			if(actual_day != "-"){
 				++cont_dias_trabajados;
+
+				//decima restriccion [section cover]
+				//contador de turnos trabajados por dia
+				++actual_cover[dia][turn_index[actual_day]];
 				
 				// septima restriccion [cantidad de minima de dias libres consecutivos]
 				if(cont_dias_libres != 0){
@@ -409,6 +446,18 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 		}
 	}
 
+	// decima restriccion [cover section]
+	for(int i = 0; i < horizon ; ++i){
+		for(int j = 0; j < cantidad_turnos; ++j){
+			if(cover_matrix[i][j][0] < actual_cover[i][j]){
+				cout << "resticcion [cover section][over] dia: " << i << ", turno: " << j << "\n"; 
+			}
+			if(cover_matrix[i][j][0] > actual_cover[i][j]){
+				cout << "resticcion [cover section][sub] dia: " << i << ", turno: " << j << "\n"; 
+			}
+		}
+	}
+
 	return 0;
 }
  
@@ -479,7 +528,7 @@ int main () {
 
 				if(label == HORIZON){
 					Horizon = stoi(*line);
-					cover_list.set_values(Horizon);
+					//cover_list.set_values(Horizon);
 
 				}
 
@@ -659,8 +708,8 @@ int main () {
 			/* Ejecucion del modelo sobre las soluciones de prueba */
 			//Model(List_Turns list_turns, List_Staff list_staff,  map <string, vector <string>> horario, int horizon)
 			cout << "Inicio de pruebas del modelo\n";
-			//Model(turn_shifts, staff_list, solution, Horizon);
-			Model2(turn_shifts, staff_list, solution_method_2, Horizon);
+			
+			Model2(turn_shifts, staff_list, solution_method_2,cover_list, Horizon);
 			
 
 		}
