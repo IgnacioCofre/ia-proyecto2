@@ -255,6 +255,7 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 	int count_trabajador = 0;
 	vector <string> turn_names = list_turns.get_turns_names();
 	int cantidad_turnos = turn_names.size();
+	int satisfaction_sum = 0;
 
 	//diccionario usado en la novena restriccion
 	map <string, int> turn_index = list_turns.get_turns_index();
@@ -428,7 +429,8 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 
 	for(int request = 0; request < size_on ; ++request){
 		if(horario[on_empleado[request]][on_dia[request]] != on_turno[request]){
-			cout << "[shift on request] empleado: " << list_staff.get_staff_name(on_empleado[request]) << ", dia: "<< on_dia[request] <<", peso: "<< on_peso[request]<<"\n";
+			//cout << "[shift on request] empleado: " << list_staff.get_staff_name(on_empleado[request]) << ", dia: "<< on_dia[request] <<", peso: "<< on_peso[request]<<"\n";
+			satisfaction_sum+= on_peso[request];
 		}
 	}
 
@@ -442,7 +444,8 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 
 	for(int request = 0; request < size_off ; ++request){
 		if(horario[off_empleado[request]][off_dia[request]] == off_turno[request]){
-			cout << "[shift off request] empleado: " << list_staff.get_staff_name(off_empleado[request]) << ", dia: "<< off_dia[request] <<", peso: "<< off_peso[request]<<"\n";
+			//cout << "[shift off request] empleado: " << list_staff.get_staff_name(off_empleado[request]) << ", dia: "<< off_dia[request] <<", peso: "<< off_peso[request]<<"\n";
+			satisfaction_sum+= off_peso[request];
 		}
 	}
 
@@ -450,15 +453,42 @@ int Model2(List_Turns list_turns, List_Staff list_staff,  vector <vector <string
 	for(int i = 0; i < horizon ; ++i){
 		for(int j = 0; j < cantidad_turnos; ++j){
 			if(cover_matrix[i][j][0] < actual_cover[i][j]){
-				cout << "resticcion [cover section][over] dia: " << i << ", turno: " << j << "\n"; 
+				//cout << "resticcion [cover section][over] dia: " << i << ", turno: " << j << "\n";
+				satisfaction_sum+= cover_matrix[i][j][2]*abs(actual_cover[i][j] - cover_matrix[i][j][0]);
 			}
 			if(cover_matrix[i][j][0] > actual_cover[i][j]){
-				cout << "resticcion [cover section][sub] dia: " << i << ", turno: " << j << "\n"; 
+				//cout << "resticcion [cover section][sub] dia: " << i << ", turno: " << j << "\n"; 
+				satisfaction_sum += cover_matrix[i][j][1]*abs(cover_matrix[i][j][0] - actual_cover[i][j]);
 			}
 		}
 	}
 
-	return 0;
+	// onceaba restriccion [maximo de fines de semana trabajados]
+	for(int empleado = 0; empleado < list_staff.get_staff_quantity(); ++empleado){
+		int contador_findes_trabajados = 0;
+		int sabado = 5;
+		while(sabado < horizon){
+			int domingo = sabado + 1;
+			if(domingo < horizon){
+				if(horario[empleado][sabado] != "-" || horario[empleado][domingo] != "-"){
+					++contador_findes_trabajados;
+				}
+			}
+			else{
+				if(horario[empleado][sabado] != "-"){
+					++contador_findes_trabajados;
+				}
+			}
+
+			sabado = sabado + 7;
+		}
+
+		if(contador_findes_trabajados > list_staff.get_MaxFD(empleado)){
+			cout << "restriccion [max findes] trabajador: " << empleado <<"\n";
+		}
+	}
+
+	return satisfaction_sum;
 }
  
 int main () {
@@ -708,9 +738,8 @@ int main () {
 			/* Ejecucion del modelo sobre las soluciones de prueba */
 			//Model(List_Turns list_turns, List_Staff list_staff,  map <string, vector <string>> horario, int horizon)
 			cout << "Inicio de pruebas del modelo\n";
-			
-			Model2(turn_shifts, staff_list, solution_method_2,cover_list, Horizon);
-			
+			int result = Model2(turn_shifts, staff_list, solution_method_2,cover_list, Horizon);
+			cout << "Resultado de funcion de satisfaccion: " << result << "\n";
 
 		}
 
