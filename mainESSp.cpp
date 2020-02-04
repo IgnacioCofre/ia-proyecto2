@@ -1,9 +1,11 @@
 #include <fstream>
 #include <iostream>
-#include <string>
-#include <bits/stdc++.h>
-#include <regex>
+#include <string>		
+#include <bits/stdc++.h>//conjuntos
+#include <regex>		//parseo archivo
 #include <random>
+#include <cstdio>		//timer
+#include <ctime> 		//timer 	
 
 using namespace std;
 
@@ -587,8 +589,6 @@ vector <vector <string>> iteration(List_Turns turn_list,List_Staff staff_list,Co
 		}
 	}
 
-	//cout << "next:	"<< horario[staff][day] << endl;
-
 	// for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
 	// 	cout << emp << "|" ;
 	// 	for(int dia = 0; dia < horizon; ++dia){
@@ -599,6 +599,20 @@ vector <vector <string>> iteration(List_Turns turn_list,List_Staff staff_list,Co
 
 	return horario;
 	
+}
+
+void archive_out(vector <vector <string>> horario){
+	
+	int cantidad_empleados = horario.size();
+	int horizon = horario[0].size();
+
+	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
+		cout << emp << "|" ;
+		for(int dia = 0; dia < horizon; ++dia){
+			cout << horario[emp][dia] << ",";
+		}
+		cout << "\n"; 
+	}
 }
 
 int main () {
@@ -794,7 +808,7 @@ int main () {
 
 		}	
 
-		cout << "Termino del parseo del archivo\n";
+		cout << "Termino de parseo del archivo\n";
 
 		/* Termino de parseo del archivo*/
 
@@ -807,7 +821,7 @@ int main () {
 		// estos valores no cambian a lo largo de la ejecucion del programa
 		castigos.push_back(5000); // 1° restriccion		[restriccion de turnos seguidos]
 		castigos.push_back(3000); // 2° restriccion		[cantidad de turnos maxima]
-		castigos.push_back(1000); // 3° restriccion		[tiempo maximo y minimo de tiempo por trabajador]
+		castigos.push_back(500); // 3° restriccion		[tiempo maximo y minimo de tiempo por trabajador]
 		castigos.push_back(5000); // 4° restriccion		[dias libres]
 		castigos.push_back(1000); // 5° restriccion		[cantidad maxima de dias trabajados consecutivos]
 		castigos.push_back(1000); // 6° restriccion		[cantidad minima de dias trabajados consecutivos]
@@ -873,64 +887,59 @@ int main () {
 
 		cout << "Inicio del HC\n";	
 
-		int restarts = 10;
-		int numero_vecinos = 10;
+		int restarts = 100;
+		int numero_vecinos = 100;
 		int iteraciones_sin_mejora = 10;
 
 		int best_solution = -1;
-
 		vector <vector<string>> best_horario;
+		int rest = 0;
 
-		for(int rest = 0; rest < restarts ; ++rest){
+		while(rest < restarts){
+			
+			vector <vector <string>> horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);;
+			int solution = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
 
-			if(best_solution == -1){
-				best_horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);
-				best_solution = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,best_horario);
-				cout << "solucion inicial: " << best_solution <<"\n"; 
-				
-			}
-			else{
-				int contador_sin_mejora = 0;
+			int contador_sin_mejora = 0;
 
-				while(contador_sin_mejora < iteraciones_sin_mejora){
-					int best_solution_vecino = -1;
-					vector <vector<string>> best_vecino;
+			while(contador_sin_mejora < iteraciones_sin_mejora){
+				int best_solution_vecino = -1;
+				vector <vector<string>> best_vecino;
 
-					for(int vecino = 0; vecino < numero_vecinos; ++vecino){
+				for(int vecino = 0; vecino < numero_vecinos; ++vecino){
 
-						vector <vector <string>> new_horario = iteration(turn_shifts,staff_list, cover_list, Horizon, best_horario);
-						int solution_vecino = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,new_horario);
-						//cout << solution_vecino << "\n";
-						if(best_solution_vecino == -1){
-							best_vecino = new_horario;
-							best_solution_vecino = solution_vecino;
-						}
-
-						else{
-							if(solution_vecino < best_solution_vecino){
-								best_solution_vecino = solution_vecino;
-								best_vecino = new_horario;
-							}
-						}
+					vector <vector <string>> new_horario = iteration(turn_shifts,staff_list, cover_list, Horizon, horario);
+					int solution_vecino = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,new_horario);
+					//cout << solution_vecino << "\n";
+					if(solution_vecino < best_solution_vecino || best_solution_vecino == -1){
+						best_vecino = new_horario;
+						best_solution_vecino = solution_vecino;
 					}
 
-					if(best_solution_vecino < best_solution){
-						//cout << "mejora: " << best_solution-best_solution_vecino << "\n";
-						best_solution = best_solution_vecino;
-						best_horario = best_vecino;
-						cout << "best solution: " << best_solution<< "\n";
-					}
-					else{
-						++contador_sin_mejora;
-					}
 				}
 
+				if(best_solution_vecino < solution){
+					solution = best_solution_vecino;
+					horario = best_vecino;
+				}
+				else{
+					++contador_sin_mejora;
+				}
 			}
-		
+
+			if(solution < best_solution || best_solution == -1){
+				best_solution = solution;
+				best_horario = horario;
+				cout << "best solution: " << best_solution << "\n";
+			}
+
+			++rest;
 		}
 
 		cout << "mejor solucion encontrada: " << best_solution << "\n";
+		archive_out(best_horario);
 
 	}
+
     return 0;
 }
