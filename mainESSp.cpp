@@ -619,7 +619,7 @@ int main () {
 
 	string str;
 	/* nombre de archivo por defecto */ 
-	string file_name = "Instance0.txt"; 
+	string file_name = "Instance5.txt"; 
 	/* casos de prueba deben estar en la carpeta "Casos" */
 	std::ifstream file("Instances//"+file_name);
 
@@ -675,7 +675,7 @@ int main () {
 
 			if(in_set_labels != set_labels.end()){
 				label = *line;
-				cout << label << "\n";
+				//cout << label << "\n";
 			}
 			
 			else{
@@ -827,75 +827,27 @@ int main () {
 		castigos.push_back(1000); // 6° restriccion		[cantidad minima de dias trabajados consecutivos]
 		castigos.push_back(1000); // 7° restriccion		[cantidad de minima de dias libres consecutivos]
 		castigos.push_back(500);  // 11° restriccion	[maximo de fines de semana trabajados]
-
-
-		//map <string, vector <string>> solution;
-		//vector <vector <string>> solution_method_2;
-
-		//std::ifstream file("Instances//solution.txt");
-
-		// if(file.fail()){
-		// 	cout << "caso de prueba [solucion] no encontrado\n";
 	
-		// } else {
-
-		// 	/* lista con las lineas del archivo */
-		// 	list<string> line_solution;
-
-		// 	while (std::getline(file,str))
-		// 	{
-		// 		if(!std::regex_match (str, std::regex("(^#[\\s\\S]*)")) && str != "" ) {
-					
-		// 			line_solution.push_back(str);
-
-		// 		}
-
-		// 	}
-
-		// 	file.close();
-
-
-		// 	for (auto line = line_solution.begin(); line != line_solution.end(); ++line){
-				
-		// 		/* solucion solo con vectores */
-
-		// 		string parse_line = std::regex_replace (*line,separadores," ");
-		// 		vector <string> trabajador_horario = split(parse_line);
-		// 		string horario_aux = std::regex_replace (trabajador_horario[1],comas," ");
-		// 		vector <string> horario = split(horario_aux);
-		// 		solution_method_2.push_back(horario);
-				
-		// 	}
-
-		// 	/* Ejecucion del modelo sobre las soluciones de prueba */
-			
-		// 	}
-
-		// }
-
-		// vector <vector <string>> horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);
-		
-		// int result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
-		// cout << "Resultado de funcion de satisfaccion: " << result << "\n";
-
-		// for(int i = 0; i < 3 ; ++i){
-		// 	cout << "\n";
-		// 	horario = iteration(turn_shifts,staff_list, cover_list, Horizon, horario);
-		// 	result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
-		// 	cout << "Resultado de funcion de satisfaccion: " << result << "\n";
-		// }	
-
 		cout << "Inicio del HC\n";	
 
-		int restarts = 100;
-		int numero_vecinos = 100;
-		int iteraciones_sin_mejora = 10;
+		// parametros del HC
+		int restarts = 1;					// cantidad de restarts
+		int numero_vecinos = 100;			// cantidad de vecinos
+		int iteraciones_sin_mejora = 10;	// maximo de iteraciones sin encontrar una mejor solucion en los vecinos
+		double min = 10;					// maximo de minutos en la ejecucion
+
+		double time_limit = 60*min; // en segundos
 
 		int best_solution = -1;
 		vector <vector<string>> best_horario;
 		int rest = 0;
 
-		while(rest < restarts){
+		clock_t start;
+		double duration;
+
+		start = clock();
+
+		while(rest < restarts && duration < time_limit){
 			
 			vector <vector <string>> horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);;
 			int solution = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
@@ -934,10 +886,16 @@ int main () {
 			}
 
 			++rest;
+
+			duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
 		}
 
 		cout << "mejor solucion encontrada: " << best_solution << "\n";
 		archive_out(best_horario);
+
+		double total_duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
+
+		cout<<"tiempo de ejecucion"<< total_duration <<'\n';
 
 	}
 
