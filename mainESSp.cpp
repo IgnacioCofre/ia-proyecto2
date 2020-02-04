@@ -3,6 +3,7 @@
 #include <string>
 #include <bits/stdc++.h>
 #include <regex>
+#include <random>
 
 using namespace std;
 
@@ -64,7 +65,12 @@ class List_Turns {
 		
 		map <string, int> get_turns_index(){
 			return turn_index;
-		} 
+		}
+
+		int get_turn_quantity(){
+			return turns_names.size();
+		}
+		 
 
 };
 
@@ -247,7 +253,6 @@ vector <string> split(string line){
 		back_inserter(tokens));	
 	return tokens;	
 };
-
 
 int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizon, vector <int> castigos,vector <vector <string>> horario){
 	//cout << "\nLista de restricciones no cumplidas encontradas:\n";
@@ -505,21 +510,102 @@ int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizo
 	return satisfaction_sum;
 }
  
-// vector <vector <string>> horario_creation(vector <vector <string>> horario, List_Staff staff_list, List_Turns list_turns, Cover cover , int horizon, int initial){
-// 	if(initial == 1){
+vector <vector <string>> horario_creation( List_Turns turns_list,List_Staff staff_list, Cover cover , int horizon){
+	int cantidad_empleados = staff_list.get_staff_quantity();
+	vector <string> aux_list(horizon, "-");
+	vector <vector <string>> new_horario(cantidad_empleados,aux_list);
+	
+	vector <string> turn_names = turns_list.get_turns_names();
 
-// 	}
-// 	else{
+	vector <vector <int>> days_off = staff_list.get_days_off();
 
-// 	}
-// } 
+	random_device dev;
+	mt19937 rng(dev());
+	uniform_int_distribution<std::mt19937::result_type> free_day(0,9);
+	uniform_int_distribution<std::mt19937::result_type> random_generator(0,turns_list.get_turn_quantity()-1); 
 
+	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
+		for(int dia = 0; dia < horizon; ++dia){
+			if(free_day(rng) == 9){
+				new_horario[emp][dia] = "-";
+			}
+			else{
+				new_horario[emp][dia] = turn_names[random_generator(rng)];
+			}
+		}
+	}
+
+	for(int emp = 0; emp < cantidad_empleados; ++emp){
+		for(auto dia = days_off[emp].begin() ; dia != days_off[emp].end(); ++dia){
+			new_horario[emp][*dia] = "-";
+		}
+	}
+
+	// for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
+	// 	cout << emp << "|" ;
+	// 	for(int dia = 0; dia < horizon; ++dia){
+	// 		cout << new_horario[emp][dia] << ",";
+	// 	}
+	// 	cout << "\n"; 
+	// }
+
+	return new_horario;
+} 
+
+vector <vector <string>> iteration(List_Turns turn_list,List_Staff staff_list,Cover cover, int horizon, vector <vector <string>> horario ){
+	int cantidad_empleados = staff_list.get_staff_quantity();
+	vector <string> turn_names = turn_list.get_turns_names();
+
+	random_device dev;
+	mt19937 rng(dev());
+	uniform_int_distribution<std::mt19937::result_type> free_day(0,9);
+	uniform_int_distribution<std::mt19937::result_type> random_turn(0,turn_list.get_turn_quantity()-1);
+	uniform_int_distribution<std::mt19937::result_type> random_day(0,horizon-1);
+	uniform_int_distribution<std::mt19937::result_type> random_staff(0,cantidad_empleados - 1);
+
+	int turn = random_turn(rng);
+	int day = random_day(rng);
+	int staff = random_staff(rng);
+
+	//cout << "actu:	"<< horario[staff][day] << endl;
+
+	if(free_day(rng) > 7){
+		if(horario[staff][day] == "-"){
+			horario[staff][day] = turn_names[turn];
+		}
+		else{	
+			horario[staff][day] = "-";
+		}
+
+	}
+	else{
+		if(horario[staff][day] == turn_names[turn]){
+			horario[staff][day] = "-";
+		}
+		else{
+			horario[staff][day] = turn_names[turn];
+		}
+	}
+
+	//cout << "next:	"<< horario[staff][day] << endl;
+
+	// for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
+	// 	cout << emp << "|" ;
+	// 	for(int dia = 0; dia < horizon; ++dia){
+	// 		cout << horario[emp][dia] << ",";
+	// 	}
+	// 	cout << "\n"; 
+	// }
+
+	return horario;
+	
+}
 
 int main () {
 
 	string str;
 	/* nombre de archivo por defecto */ 
-	string file_name = "Instance0.txt"; 
+	string file_name = "Instance24.txt"; 
 	/* casos de prueba deben estar en la carpeta "Casos" */
 	std::ifstream file("Instances//"+file_name);
 
@@ -719,67 +805,73 @@ int main () {
 		vector <int> castigos;
 		castigos.push_back(0);
 		// estos valores no cambian a lo largo de la ejecucion del programa
-		castigos.push_back(5000); // primera restriccion	[restriccion de turnos seguidos]
-		castigos.push_back(3000); // segunda restriccion	[cantidad de turnos maxima]
-		castigos.push_back(1000); // tercera restriccion	[tiempo maximo y minimo de tiempo por trabajador]
-		castigos.push_back(5000); // cuarta restriccion		[dias libres]
-		castigos.push_back(1000); // quinta restriccion		[cantidad maxima de dias trabajados consecutivos]
-		castigos.push_back(1000); // sexta restriccion		[cantidad minima de dias trabajados consecutivos]
-		castigos.push_back(1000); // septima restriccion	[cantidad de minima de dias libres consecutivos]
-		castigos.push_back(500); // onceaba restriccion	[maximo de fines de semana trabajados]
+		castigos.push_back(5000); // 1° restriccion		[restriccion de turnos seguidos]
+		castigos.push_back(3000); // 2° restriccion		[cantidad de turnos maxima]
+		castigos.push_back(1000); // 3° restriccion		[tiempo maximo y minimo de tiempo por trabajador]
+		castigos.push_back(5000); // 4° restriccion		[dias libres]
+		castigos.push_back(1000); // 5° restriccion		[cantidad maxima de dias trabajados consecutivos]
+		castigos.push_back(1000); // 6° restriccion		[cantidad minima de dias trabajados consecutivos]
+		castigos.push_back(1000); // 7° restriccion		[cantidad de minima de dias libres consecutivos]
+		castigos.push_back(500);  // 11° restriccion	[maximo de fines de semana trabajados]
 
 
-		map <string, vector <string>> solution;
-		vector <vector <string>> solution_method_2;
+		//map <string, vector <string>> solution;
+		//vector <vector <string>> solution_method_2;
 
-		std::ifstream file("Instances//solution.txt");
+		//std::ifstream file("Instances//solution.txt");
 
-		if(file.fail()){
-			cout << "caso de prueba [solucion] no encontrado\n";
+		// if(file.fail()){
+		// 	cout << "caso de prueba [solucion] no encontrado\n";
 	
-		} else {
+		// } else {
 
-			/* lista con las lineas del archivo */
-			list<string> line_solution;
+		// 	/* lista con las lineas del archivo */
+		// 	list<string> line_solution;
 
-			while (std::getline(file,str))
-			{
-				if(!std::regex_match (str, std::regex("(^#[\\s\\S]*)")) && str != "" ) {
+		// 	while (std::getline(file,str))
+		// 	{
+		// 		if(!std::regex_match (str, std::regex("(^#[\\s\\S]*)")) && str != "" ) {
 					
-					line_solution.push_back(str);
+		// 			line_solution.push_back(str);
 
-				}
+		// 		}
 
-			}
+		// 	}
 
-			file.close();
+		// 	file.close();
 
 
-			for (auto line = line_solution.begin(); line != line_solution.end(); ++line){
-				// string parse_line = std::regex_replace (*line,separadores," ");
-				// vector <string> trabajador_horario = split(parse_line);
-				// string trabajador = trabajador_horario[0];
-				// string horario_aux = std::regex_replace (trabajador_horario[1],comas," ");
-				// vector <string> horario = split(horario_aux);
-				// solution.insert(pair <string , vector <string>> (trabajador, horario));
+		// 	for (auto line = line_solution.begin(); line != line_solution.end(); ++line){
 				
-				/* solucion solo con vectores */
+		// 		/* solucion solo con vectores */
 
-				string parse_line = std::regex_replace (*line,separadores," ");
-				vector <string> trabajador_horario = split(parse_line);
-				string horario_aux = std::regex_replace (trabajador_horario[1],comas," ");
-				vector <string> horario = split(horario_aux);
-				solution_method_2.push_back(horario);
+		// 		string parse_line = std::regex_replace (*line,separadores," ");
+		// 		vector <string> trabajador_horario = split(parse_line);
+		// 		string horario_aux = std::regex_replace (trabajador_horario[1],comas," ");
+		// 		vector <string> horario = split(horario_aux);
+		// 		solution_method_2.push_back(horario);
 				
-			}
+		// 	}
 
-			/* Ejecucion del modelo sobre las soluciones de prueba */
-			//Model(List_Turns list_turns, List_Staff list_staff,  map <string, vector <string>> horario, int horizon)
-			cout << "Inicio de pruebas del modelo\n";
-			int result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,solution_method_2);
+		// 	/* Ejecucion del modelo sobre las soluciones de prueba */
+			
+		// 	}
+
+		// }
+
+		cout << "Inicio de pruebas del modelo\n";
+
+		vector <vector <string>> horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);
+		
+		int result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
+		cout << "Resultado de funcion de satisfaccion: " << result << "\n";
+
+		for(int i = 0; i < 3 ; ++i){
+			cout << "\n";
+			horario = iteration(turn_shifts,staff_list, cover_list, Horizon, horario);
+			result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
 			cout << "Resultado de funcion de satisfaccion: " << result << "\n";
-
-		}
+		}		
 
 	}
     return 0;
