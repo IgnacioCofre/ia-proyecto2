@@ -605,7 +605,7 @@ int main () {
 
 	string str;
 	/* nombre de archivo por defecto */ 
-	string file_name = "Instance24.txt"; 
+	string file_name = "Instance0.txt"; 
 	/* casos de prueba deben estar en la carpeta "Casos" */
 	std::ifstream file("Instances//"+file_name);
 
@@ -859,19 +859,77 @@ int main () {
 
 		// }
 
-		cout << "Inicio de pruebas del modelo\n";
-
-		vector <vector <string>> horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);
+		// vector <vector <string>> horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);
 		
-		int result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
-		cout << "Resultado de funcion de satisfaccion: " << result << "\n";
+		// int result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
+		// cout << "Resultado de funcion de satisfaccion: " << result << "\n";
 
-		for(int i = 0; i < 3 ; ++i){
-			cout << "\n";
-			horario = iteration(turn_shifts,staff_list, cover_list, Horizon, horario);
-			result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
-			cout << "Resultado de funcion de satisfaccion: " << result << "\n";
-		}		
+		// for(int i = 0; i < 3 ; ++i){
+		// 	cout << "\n";
+		// 	horario = iteration(turn_shifts,staff_list, cover_list, Horizon, horario);
+		// 	result = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
+		// 	cout << "Resultado de funcion de satisfaccion: " << result << "\n";
+		// }	
+
+		cout << "Inicio del HC\n";	
+
+		int restarts = 10;
+		int numero_vecinos = 10;
+		int iteraciones_sin_mejora = 10;
+
+		int best_solution = -1;
+
+		vector <vector<string>> best_horario;
+
+		for(int rest = 0; rest < restarts ; ++rest){
+
+			if(best_solution == -1){
+				best_horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);
+				best_solution = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,best_horario);
+				cout << "solucion inicial: " << best_solution <<"\n"; 
+				
+			}
+			else{
+				int contador_sin_mejora = 0;
+
+				while(contador_sin_mejora < iteraciones_sin_mejora){
+					int best_solution_vecino = -1;
+					vector <vector<string>> best_vecino;
+
+					for(int vecino = 0; vecino < numero_vecinos; ++vecino){
+
+						vector <vector <string>> new_horario = iteration(turn_shifts,staff_list, cover_list, Horizon, best_horario);
+						int solution_vecino = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,new_horario);
+						//cout << solution_vecino << "\n";
+						if(best_solution_vecino == -1){
+							best_vecino = new_horario;
+							best_solution_vecino = solution_vecino;
+						}
+
+						else{
+							if(solution_vecino < best_solution_vecino){
+								best_solution_vecino = solution_vecino;
+								best_vecino = new_horario;
+							}
+						}
+					}
+
+					if(best_solution_vecino < best_solution){
+						//cout << "mejora: " << best_solution-best_solution_vecino << "\n";
+						best_solution = best_solution_vecino;
+						best_horario = best_vecino;
+						cout << "best solution: " << best_solution<< "\n";
+					}
+					else{
+						++contador_sin_mejora;
+					}
+				}
+
+			}
+		
+		}
+
+		cout << "mejor solucion encontrada: " << best_solution << "\n";
 
 	}
     return 0;
