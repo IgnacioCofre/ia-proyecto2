@@ -1,4 +1,4 @@
-#include <fstream>
+#include <fstream>		//lectura y escritura de archivos
 #include <iostream>
 #include <string>		
 #include <bits/stdc++.h>//conjuntos
@@ -64,6 +64,10 @@ class List_Turns {
 		vector <string> get_turns_names() {
 			return turns_names;
 		} 
+
+		string get_turn_name(int turn){
+			return turns_names[turn];
+		}
 		
 		map <string, int> get_turns_index(){
 			return turn_index;
@@ -79,9 +83,9 @@ class List_Turns {
 class List_Staff {
 	vector <string> staff_names ;
 	map <string, int> staff_index;
-	//MaxT[int [trabajador][string turno] = int cantidad
+	// MaxT[int [trabajador][string turno] = int cantidad
 	vector <map<string , int>> MaxT;
-	//[maxm, minm, maxct, minct, mincdl, maxfd]
+	// [maxm, minm, maxct, minct, mincdl, maxfd]
 	vector <vector <int>> staff_data;
 	// days_off [int trbajadador] = vector int [days_off]
 	vector <vector <int>> days_off;
@@ -97,6 +101,9 @@ class List_Staff {
 	vector <int> shift_off_request_dia;
 	vector <string> shift_off_request_turno;
 	vector <int> shift_off_request_peso;
+	
+	// info in putput file 
+	vector <string> output_info;
 
 	public:
 
@@ -142,6 +149,10 @@ class List_Staff {
 			return MaxT[staff][turn];
 		}
 
+		void set_output_info(string line){
+			output_info.push_back(line);
+		}
+
 		int get_MaxM(int trabajador){
 			return staff_data[trabajador][0];
 		}
@@ -164,7 +175,6 @@ class List_Staff {
 		vector <vector <int>> get_days_off(){
 			return days_off;
 		}
-
 
 		vector <int> get_shift_on_request_empleado(){	
 			return shift_on_request_empleado;
@@ -204,6 +214,10 @@ class List_Staff {
 
 		int get_staff_quantity(){
 			return staff_names.size();
+		}
+
+		vector <string> get_output_info(){
+			return output_info;
 		}
 
 };
@@ -601,25 +615,339 @@ vector <vector <string>> iteration(List_Turns turn_list,List_Staff staff_list,Co
 	
 }
 
-void archive_out(vector <vector <string>> horario){
+void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizon, vector <int> castigos,vector <vector <string>> horario){
 	
-	int cantidad_empleados = horario.size();
-	int horizon = horario[0].size();
+	//int count_trabajador = 0;
+	vector <string> turn_names = list_turns.get_turns_names();
+	int cantidad_turnos = turn_names.size();
+	int cantidad_empleados = list_staff.get_staff_quantity();
+	int satisfaction_sum = 0;
 
-	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
-		cout << emp << "|" ;
-		for(int dia = 0; dia < horizon; ++dia){
-			cout << horario[emp][dia] << ",";
+	// contador de penalizaciones por empleado
+	vector <int> penalizaciones_empleado(cantidad_empleados,0);
+
+	// costos por dia [cover section]
+	vector <int> costos_por_dia(horizon,0);
+
+	//diccionario usado en la novena restriccion
+	map <string, int> turn_index = list_turns.get_turns_index();
+	vector <vector <vector <int>>> cover_matrix = cover.get_section_cover();
+
+	//variables usadas en la decima restriccion
+	vector <int> aux_vector(list_staff.get_staff_quantity(), 0);
+	vector <vector <int>> actual_cover(horizon,aux_vector);
+
+	// iteracion sobre horario[empleado]
+	for(int count_trabajador = 0 ; count_trabajador < cantidad_empleados; ++count_trabajador ){
+		vector <string> horario_trabajador = horario[count_trabajador];
+		
+		int tiempo_trabajado = 0;
+		map <string, int> dict_cantidad_turnos;
+		for(auto turn_name = turn_names.begin(); turn_name != turn_names.end(); ++turn_name){
+			dict_cantidad_turnos.insert(pair <string,int> (*turn_name, 0));
 		}
-		cout << "\n"; 
+
+		//variables utilizada en la quinta restricicon [cantidad de turnos maxima]
+		//int next_day_off = -1; 
+		int cont_dias_libres = 0;
+		int cont_dias_trabajados = 0;
+		int MaxCT = list_staff.get_MaxCT(count_trabajador);
+		int MinCT = list_staff.get_MinCT(count_trabajador);
+		int MinCDL = list_staff.get_MinCDL(count_trabajador);
+
+		// iteracion sobre horario[empleado][dia]
+		for(int dia = 0 ; dia < horizon; ++dia){
+
+			// primera restriccion [restriccion de turnos seguidos]
+			string actual_day = horario_trabajador[dia];
+
+			if(dia < (horizon-1)){
+				string next_day =horario_trabajador[dia+1];
+				
+				// cout << "turno dia_1 :" << actual_day << "\n";
+				// cout << "turno dia_2 :" << next_day << "\n"; 
+
+				// verificacion primera restriccion
+				if(list_turns.verify_restriction(actual_day, next_day) == 1 ){
+					// string name = list_staff.get_staff_name(count_trabajador);
+					// cout << "Restriccion de turnos seguidos no se cumple: " << "\n";
+					// cout << "trabajador:  " << name << "\n";
+					// cout << "turno dia_1: " << actual_day << "\n";
+					// cout << "turno dia_2: " << next_day << "\n"; 
+					++penalizaciones_empleado[count_trabajador];
+
+					satisfaction_sum += castigos[1];
+
+				}
+			}
+
+			
+			if(actual_day == "-"){
+				++cont_dias_libres;
+
+				if(cont_dias_trabajados != 0){
+					// quinta restriccion [cantidad maxima de dias trabajados consecutivos]
+					if(cont_dias_trabajados > MaxCT){
+						// cout << "restriccion maxima de dias trabajados no se cumple\n";
+						// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
+						++penalizaciones_empleado[count_trabajador];
+						satisfaction_sum += castigos[5]*abs(cont_dias_trabajados - MaxCT);
+					}
+					// sexta restriccion [cantidad minima de dias trabajados consecutivos]
+					if(cont_dias_trabajados < MinCT){
+						// cout << "restriccion minima de dias trabajados no se cumple\n";
+						// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
+						++penalizaciones_empleado[count_trabajador];
+						satisfaction_sum += castigos[6]*abs(MinCT*cont_dias_trabajados);
+					}
+
+					cont_dias_trabajados = 0;
+				}
+			}
+
+			if(actual_day != "-"){
+				++cont_dias_trabajados;
+
+				//decima restriccion [section cover]
+				//contador de turnos trabajados por dia
+				++actual_cover[dia][turn_index[actual_day]];
+				
+				// septima restriccion [cantidad de minima de dias libres consecutivos]
+				if(cont_dias_libres != 0){
+
+					if(cont_dias_libres < MinCDL){
+						// cout << "restriccion minima de dias libres no se cumple\n";
+						// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
+						satisfaction_sum += castigos[7]*abs(MinCDL - cont_dias_libres);
+						++penalizaciones_empleado[count_trabajador];
+					}
+
+					cont_dias_libres = 0;
+				} 
+			}
+
+			// segunda restriccion [cantidad de turnos maxima]
+			dict_cantidad_turnos[actual_day] += 1;
+
+			// tercera restriccion [tiempo maximo y minimo de tiempo por trabajador]
+			tiempo_trabajado += list_turns.get_duration_turn(actual_day);
+		
+		}
+
+		// verificacion de quinta y sexta restriccion
+		if(cont_dias_trabajados != 0){
+
+			if(cont_dias_trabajados > MaxCT){
+				// cout << "restriccion maxima de dias trabajados no se cumple\n";
+				// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
+				++penalizaciones_empleado[count_trabajador];
+				satisfaction_sum += castigos[5]*abs(cont_dias_trabajados - MaxCT);
+			}
+			else if(cont_dias_trabajados < MinCT){
+				// cout << "restriccion minima de dias trabajados no se cumple\n";
+				// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
+				++penalizaciones_empleado[count_trabajador];
+				satisfaction_sum += castigos[6]*abs(MinCT*cont_dias_trabajados);
+			}
+		}
+
+		// verificacion de septima restriccion
+		if(cont_dias_libres != 0 && cont_dias_libres < MinCDL){
+			// cout << "restriccion minima de dias libres no se cumple\n";
+			// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
+			++penalizaciones_empleado[count_trabajador];
+			satisfaction_sum += castigos[7]*abs(MinCDL - cont_dias_libres);
+		} 
+
+		// verificacion segunda restriccion
+
+		for(auto turn_name = turn_names.begin(); turn_name != turn_names.end() ; ++turn_name){
+			if(dict_cantidad_turnos[*turn_name] >  list_staff.get_MaxT(count_trabajador, *turn_name)){
+				// cout << "Restricciones MaxT no cumplidas\n";
+				// cout << "Trabajador:\t" << list_staff.get_staff_name(count_trabajador) << "\n";
+				// cout << "Turn:\t" << *turn_name << "\n";
+				// cout << "MaxT:\t" << list_staff.get_MaxT(count_trabajador, *turn_name) << "\n";
+				// cout << "Total:\t" << dict_cantidad_turnos[*turn_name] << "\n";
+				++penalizaciones_empleado[count_trabajador];
+				satisfaction_sum += castigos[2]*abs(dict_cantidad_turnos[*turn_name] - list_staff.get_MaxT(count_trabajador, *turn_name));
+			}
+		}
+
+		// verificacion de tercera restriccion
+		if(tiempo_trabajado > list_staff.get_MaxM(count_trabajador)){
+			// cout << "MaxM restriccion [Trabajador]: " << list_staff.get_staff_name(count_trabajador) <<"\n";  
+			// cout << "MaxM:   " << list_staff.get_MaxM(count_trabajador)<< "\n";
+			// cout << "tiempo: " <<  tiempo_trabajado << "\n";
+			++penalizaciones_empleado[count_trabajador];
+			satisfaction_sum += castigos[3];
+		}
+
+		if(tiempo_trabajado < list_staff.get_MinM(count_trabajador)){
+			// cout << "MinM restriccion [Trabajador]: " << list_staff.get_staff_name(count_trabajador) <<"\n";  
+			// cout << "MinM:   " << list_staff.get_MinM(count_trabajador)<< "\n";
+			// cout << "tiempo: " <<  tiempo_trabajado << "\n";
+			++penalizaciones_empleado[count_trabajador];
+			satisfaction_sum += castigos[3];
+		}
+
+		// cout << "tiempo: " << list_staff.get_staff_name(count_trabajador) << ": " << tiempo_trabajado << "\n";
+		
+		//tiempo_trabajado = 0; 
+
+		//count_trabajador += 1;
+		
 	}
+
+	// cuarta restriccion [dias libres]
+	vector <vector <int>> days_off = list_staff.get_days_off();
+	
+	for(int emp = 0; emp < cantidad_empleados; ++emp){
+		for(auto dia = days_off[emp].begin() ; dia != days_off[emp].end(); ++dia){
+			if(horario[emp][*dia] != "-"){
+				//cout << "Restricciones [Days off] trabajador: " << emp << ", dia " << *dia << "\n"; 
+				++penalizaciones_empleado[emp];
+				satisfaction_sum += castigos[4];
+			}
+			
+		}
+	}
+
+	// octava restriciccion [shift on requests]
+	vector <int> on_empleado = list_staff.get_shift_on_request_empleado();
+	vector <int> on_dia = list_staff.get_shift_on_request_dia();
+	vector <string> on_turno = list_staff.get_shift_on_request_turno();
+	vector <int> on_peso = list_staff.get_shift_on_request_peso();
+
+	int size_on = on_empleado.size();
+
+	for(int request = 0; request < size_on ; ++request){
+		if(horario[on_empleado[request]][on_dia[request]] != on_turno[request]){
+			//cout << "[shift on request] empleado: " << list_staff.get_staff_name(on_empleado[request]) << ", dia: "<< on_dia[request] <<", peso: "<< on_peso[request]<<"\n";
+			satisfaction_sum+= on_peso[request];
+			++penalizaciones_empleado[on_empleado[request]];
+		}
+	}
+
+	// novena restriccion [shift off requests]
+	vector <int> off_empleado = list_staff.get_shift_off_request_empleado();
+	vector <int> off_dia = list_staff.get_shift_off_request_dia();
+	vector <string> off_turno = list_staff.get_shift_off_request_turno();
+	vector <int> off_peso = list_staff.get_shift_off_request_peso();
+
+	int size_off = off_empleado.size();
+
+	for(int request = 0; request < size_off ; ++request){
+		if(horario[off_empleado[request]][off_dia[request]] == off_turno[request]){
+			//cout << "[shift off request] empleado: " << list_staff.get_staff_name(off_empleado[request]) << ", dia: "<< off_dia[request] <<", peso: "<< off_peso[request]<<"\n";
+			++penalizaciones_empleado[off_empleado[request]];
+			satisfaction_sum+= off_peso[request];
+		}
+	}
+
+	// decima restriccion [cover section]
+	for(int i = 0; i < horizon ; ++i){
+		for(int j = 0; j < cantidad_turnos; ++j){
+			if(cover_matrix[i][j][0] < actual_cover[i][j]){
+				//cout << "resticcion [cover section][over] dia: " << i << ", turno: " << j << "\n";
+				satisfaction_sum+= cover_matrix[i][j][2]*abs(actual_cover[i][j] - cover_matrix[i][j][0]);
+				costos_por_dia[i]+= cover_matrix[i][j][2]*abs(actual_cover[i][j] - cover_matrix[i][j][0]);
+			}
+			if(cover_matrix[i][j][0] > actual_cover[i][j]){
+				//cout << "resticcion [cover section][sub] dia: " << i << ", turno: " << j << "\n"; 
+				satisfaction_sum += cover_matrix[i][j][1]*abs(cover_matrix[i][j][0] - actual_cover[i][j]);
+				costos_por_dia[i]+= cover_matrix[i][j][1]*abs(cover_matrix[i][j][0] - actual_cover[i][j]);
+			}
+		}
+	}
+
+	// onceaba restriccion [maximo de fines de semana trabajados]
+	for(int empleado = 0; empleado < cantidad_empleados; ++empleado){
+		int contador_findes_trabajados = 0;
+		int sabado = 5;
+		while(sabado < horizon){
+			int domingo = sabado + 1;
+			if(domingo < horizon){
+				if(horario[empleado][sabado] != "-" || horario[empleado][domingo] != "-"){
+					++contador_findes_trabajados;
+				}
+			}
+			else{
+				if(horario[empleado][sabado] != "-"){
+					++contador_findes_trabajados;
+				}
+			}
+
+			sabado = sabado + 7;
+		}
+
+		if(contador_findes_trabajados > list_staff.get_MaxFD(empleado)){
+			//cout << "restriccion [max findes] trabajador: " << empleado <<"\n";
+			++penalizaciones_empleado[empleado];
+			satisfaction_sum += castigos[8]*abs(contador_findes_trabajados - list_staff.get_MaxFD(empleado));
+		}
+	}
+
+	ofstream output;
+	output.open ("output.txt");
+  	output << "#Valor Función Objetivo:\n\n";
+	output << satisfaction_sum << "\n\n";
+
+	output << "#Calendario horizonte de " << horizon << " días:\n\n";  
+	output << "Empleados/Días\t";
+	for(int iter = 0 ; iter < horizon ; ++iter){
+		output << "|" << iter;
+	}
+	output << "\n";
+	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
+		output << list_staff.get_staff_name(emp) << "\t\t" ;
+		for(int dia = 0; dia < horizon; ++dia){
+			output << "|" << horario[emp][dia] ;
+		}
+		output << "\n"; 
+	}
+
+	output << "\n#Penalizaciones por empleado:\n\n";
+	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
+		output << list_staff.get_staff_name(emp) << "\t,\t" ;
+		output << penalizaciones_empleado[emp] << "\n";
+	}
+
+	output << "\nTabla de cobertura de turnos y penalización por dı́a:\n\n";
+	output << "Turnos/Días\t";
+	for(int iter = 0 ; iter < horizon ; ++iter){
+		output << "|" << iter << "\t";
+	}
+	output << "\n";
+
+	for(int turno = 0 ; turno < cantidad_turnos ; ++turno){
+		output << list_turns.get_turn_name(turno) << "\t\t" ;
+		for(int dia = 0; dia < horizon ; ++dia){
+			output << "|" << actual_cover[dia][turno] <<"/"<< cover_matrix[dia][turno][0] << "\t";
+		}
+		output << "\n";
+	}
+	output << "Costo\t\t";
+	for(int dia = 0; dia < horizon ; ++dia){
+		output << "|" << costos_por_dia[dia] << "\t";
+	}
+
+	output << "\n\n#Resumen información por empleado:\n";
+	output << "EmpleadoID, MaxT, MaxM, MinM, MaxCT, MinCT, MinCDL, MaxFD\n\n";
+
+	vector <string> output_info = list_staff.get_output_info();
+
+	for(int empleado = 0; empleado < cantidad_empleados; ++empleado){
+		output << output_info[empleado] << "\n";
+	}
+
+  	output.close();
 }
 
 int main () {
 
 	string str;
 	/* nombre de archivo por defecto */ 
-	string file_name = "Instance5.txt"; 
+	string file_name = "Instance0.txt"; 
 	/* casos de prueba deben estar en la carpeta "Casos" */
 	std::ifstream file("Instances//"+file_name);
 
@@ -630,6 +958,7 @@ int main () {
 
 		/* lista con las lineas del archivo */
 		list<string> list_aux;
+		
 
 		while (std::getline(file,str))
 		{
@@ -714,6 +1043,8 @@ int main () {
 				}
 
 				else if(label == STAFF){
+
+					staff_list.set_output_info(*line);
 
 					string parse_line = std::regex_replace (*line,spaces,"");
 					parse_line = std::regex_replace (parse_line,comas," ");
@@ -832,7 +1163,7 @@ int main () {
 
 		// parametros del HC
 		int restarts = 1;					// cantidad de restarts
-		int numero_vecinos = 100;			// cantidad de vecinos
+		int numero_vecinos = 10;			// cantidad de vecinos
 		int iteraciones_sin_mejora = 10;	// maximo de iteraciones sin encontrar una mejor solucion en los vecinos
 		double min = 10;					// maximo de minutos en la ejecucion
 
@@ -891,11 +1222,11 @@ int main () {
 		}
 
 		cout << "mejor solucion encontrada: " << best_solution << "\n";
-		archive_out(best_horario);
+		archive_out(turn_shifts, staff_list, cover_list, Horizon, castigos,best_horario);
 
 		double total_duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
 
-		cout<<"tiempo de ejecucion"<< total_duration <<'\n';
+		cout<<"tiempo de ejecucion: "<< total_duration << "[seg]" <<'\n';
 
 	}
 

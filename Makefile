@@ -3,4 +3,5 @@ all:
 	./main
 clean:
 	rm -rf *o main
+	rm -rf output.txt
 	
