@@ -9,6 +9,7 @@
 
 using namespace std;
 
+// Clase List_turns: clase que guarda la informacion sobre los turnos
 class List_Turns {
 	vector <string> turns_names;
 	map <string, vector <string>> turns_restriccions;
@@ -80,6 +81,7 @@ class List_Turns {
 
 };
 
+// Class List_Staff: clase que guarda la informacion sobre los empleados
 class List_Staff {
 	vector <string> staff_names ;
 	map <string, int> staff_index;
@@ -222,6 +224,7 @@ class List_Staff {
 
 };
 
+// Class Cover: clase que guarda la informacion referida a los turnos totales que debe tener el horario por dia
 class Cover{
 
 	vector <vector <vector <int>>> matrix_of_covers;
@@ -261,6 +264,7 @@ class Cover{
 
 };
 
+// Funcion split: realiza una separacion de strings por espacios en blanco
 vector <string> split(string line){
 	istringstream iss(line);
 	vector<string> tokens;
@@ -270,6 +274,7 @@ vector <string> split(string line){
 	return tokens;	
 };
 
+// Funcion Model2: entrega el valor de la funcion de satisfaccion de acuerdo al horario
 int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizon, vector <int> castigos,vector <vector <string>> horario){
 	//cout << "\nLista de restricciones no cumplidas encontradas:\n";
 
@@ -525,7 +530,8 @@ int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizo
 
 	return satisfaction_sum;
 }
- 
+
+// Funcion horario_creation: crea un horario de manera aleatoria 
 vector <vector <string>> horario_creation( List_Turns turns_list,List_Staff staff_list, Cover cover , int horizon){
 	int cantidad_empleados = staff_list.get_staff_quantity();
 	vector <string> aux_list(horizon, "-");
@@ -568,6 +574,7 @@ vector <vector <string>> horario_creation( List_Turns turns_list,List_Staff staf
 	return new_horario;
 } 
 
+// Funcion iteration: realiza un cambio aleatorio sobre un horario 
 vector <vector <string>> iteration(List_Turns turn_list,List_Staff staff_list,Cover cover, int horizon, vector <vector <string>> horario ){
 	int cantidad_empleados = staff_list.get_staff_quantity();
 	vector <string> turn_names = turn_list.get_turns_names();
@@ -615,6 +622,7 @@ vector <vector <string>> iteration(List_Turns turn_list,List_Staff staff_list,Co
 	
 }
 
+// Funcion archive_out: escribe el archivo de salida [output.txt]
 void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizon, vector <int> castigos,vector <vector <string>> horario){
 	
 	//int count_trabajador = 0;
@@ -943,11 +951,41 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
   	output.close();
 }
 
+// Funcion logs: escribe un archivo adicional [logs.txt] con infomacion de la ejecucion del algoritmo
+void logs(string file_name, int restarts, int numero_vecinos,int iteraciones_sin_mejora,int minutos_ejecucion, int best_solution, double total_duration){
+
+	// escritura de sobre archivo logs:
+	ifstream file("logs.txt");
+
+	//logs.open("logs.txt", ios::app);
+	ofstream logs;
+	logs.open("logs.txt", ios::app);
+
+	if(file.fail()){
+
+		logs << "Caso\t\tRest\tVecinos\t\tSin mejora\tMax tiempo[Min]\tResultado\tDuracion Total[seg]" << "\n";
+	}
+	
+	file.close();
+	// ofstream logs;
+	// logs.open("logs.txt", ios::app);
+	logs << file_name << "\t";
+	logs << restarts << "\t";
+	logs << numero_vecinos << "\t\t";
+	logs << iteraciones_sin_mejora << "\t\t";
+	logs << minutos_ejecucion << "\t\t";
+	logs << best_solution << "\t\t";
+	logs << total_duration << "\t";
+	logs << "\n" ;
+	logs.close();
+	
+}
+
 int main () {
 
 	string str;
 	/* nombre de archivo por defecto */ 
-	string file_name = "Instance0.txt"; 
+	string file_name = "Instance5.txt"; 
 	/* casos de prueba deben estar en la carpeta "Casos" */
 	std::ifstream file("Instances//"+file_name);
 
@@ -1064,8 +1102,6 @@ int main () {
 						
 					}
 
-					/*funciones nuevas*/
-
 					staff_list.set_MaxT(MaxT);
 					staff_list.set_staff_data(split_line[0],stoi(split_line[2]), stoi(split_line[3]), stoi(split_line[4]), stoi(split_line[5]), stoi(split_line[6]), stoi(split_line[7]));
 
@@ -1157,7 +1193,7 @@ int main () {
 		castigos.push_back(1000); // 5° restriccion		[cantidad maxima de dias trabajados consecutivos]
 		castigos.push_back(1000); // 6° restriccion		[cantidad minima de dias trabajados consecutivos]
 		castigos.push_back(1000); // 7° restriccion		[cantidad de minima de dias libres consecutivos]
-		castigos.push_back(500);  // 11° restriccion	[maximo de fines de semana trabajados]
+		castigos.push_back(1000);  // 11° restriccion	[maximo de fines de semana trabajados]
 	
 		cout << "Inicio del HC\n";	
 
@@ -1165,7 +1201,7 @@ int main () {
 		int restarts = 1;					// cantidad de restarts
 		int numero_vecinos = 10;			// cantidad de vecinos
 		int iteraciones_sin_mejora = 10;	// maximo de iteraciones sin encontrar una mejor solucion en los vecinos
-		double min = 10;					// maximo de minutos en la ejecucion
+		double min = 15;					// maximo de minutos en la ejecucion
 
 		double time_limit = 60*min; // en segundos
 
@@ -1226,7 +1262,10 @@ int main () {
 
 		double total_duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
 
-		cout<<"tiempo de ejecucion: "<< total_duration << "[seg]" <<'\n';
+		cout<<"Tiempo de ejecucion: "<< total_duration << "[seg]" <<'\n';
+
+		logs(file_name,restarts,numero_vecinos,iteraciones_sin_mejora,min,best_solution,total_duration);
+
 
 	}
 

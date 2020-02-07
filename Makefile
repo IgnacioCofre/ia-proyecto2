@@ -4,4 +4,4 @@ all:
 clean:
 	rm -rf *o main
 	rm -rf output.txt
-	
+	rm -rf logs.txt
