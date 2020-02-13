@@ -278,8 +278,8 @@ vector <string> split(string line){
 int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizon, vector <int> castigos,vector <vector <string>> horario){
 	//cout << "\nLista de restricciones no cumplidas encontradas:\n";
 
-	int count_trabajador = 0;
 	vector <string> turn_names = list_turns.get_turns_names();
+	int cantidad_empleados = list_staff.get_staff_quantity();
 	int cantidad_turnos = turn_names.size();
 	int satisfaction_sum = 0;
 
@@ -292,8 +292,8 @@ int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizo
 	vector <vector <int>> actual_cover(horizon,aux_vector);
 
 	// iteracion sobre horario[empleado]
-	for(auto trabajador = horario.begin(); trabajador != horario.end() ; ++trabajador){
-		vector <string> horario_trabajador = *trabajador;
+	for(int count_trabajador = 0 ; count_trabajador < cantidad_empleados; ++count_trabajador ){
+		vector <string> horario_trabajador = horario[count_trabajador];
 		
 		int tiempo_trabajado = 0;
 		map <string, int> dict_cantidad_turnos;
@@ -349,7 +349,7 @@ int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizo
 					if(cont_dias_trabajados < MinCT){
 						// cout << "restriccion minima de dias trabajados no se cumple\n";
 						// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
-						satisfaction_sum += castigos[6]*abs(MinCT*cont_dias_trabajados);
+						satisfaction_sum += castigos[6]*abs(MinCT-cont_dias_trabajados);
 					}
 
 					cont_dias_trabajados = 0;
@@ -395,7 +395,7 @@ int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizo
 			else if(cont_dias_trabajados < MinCT){
 				// cout << "restriccion minima de dias trabajados no se cumple\n";
 				// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
-				satisfaction_sum += castigos[6]*abs(MinCT*cont_dias_trabajados);
+				satisfaction_sum += castigos[6]*abs(MinCT - cont_dias_trabajados);
 			}
 		}
 
@@ -437,15 +437,10 @@ int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizo
 
 		// cout << "tiempo: " << list_staff.get_staff_name(count_trabajador) << ": " << tiempo_trabajado << "\n";
 		
-		tiempo_trabajado = 0; 
-
-		count_trabajador += 1;
 		
 	}
 
 	// cuarta restriccion [dias libres]
-
-	int cantidad_empleados = list_staff.get_staff_quantity();
 	vector <vector <int>> days_off = list_staff.get_days_off();
 	
 	for(int emp = 0; emp < cantidad_empleados; ++emp){
@@ -548,7 +543,7 @@ vector <vector <string>> horario_creation( List_Turns turns_list,List_Staff staf
 
 	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
 		for(int dia = 0; dia < horizon; ++dia){
-			if(free_day(rng) == 9){
+			if(free_day(rng) > 7){
 				new_horario[emp][dia] = "-";
 			}
 			else{
@@ -557,18 +552,10 @@ vector <vector <string>> horario_creation( List_Turns turns_list,List_Staff staf
 		}
 	}
 
-	for(int emp = 0; emp < cantidad_empleados; ++emp){
-		for(auto dia = days_off[emp].begin() ; dia != days_off[emp].end(); ++dia){
-			new_horario[emp][*dia] = "-";
-		}
-	}
-
-	// for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
-	// 	cout << emp << "|" ;
-	// 	for(int dia = 0; dia < horizon; ++dia){
-	// 		cout << new_horario[emp][dia] << ",";
+	// for(int emp = 0; emp < cantidad_empleados; ++emp){
+	// 	for(auto dia = days_off[emp].begin() ; dia != days_off[emp].end(); ++dia){
+	// 		new_horario[emp][*dia] = "-";
 	// 	}
-	// 	cout << "\n"; 
 	// }
 
 	return new_horario;
@@ -609,14 +596,6 @@ vector <vector <string>> iteration(List_Turns turn_list,List_Staff staff_list,Co
 			horario[staff][day] = turn_names[turn];
 		}
 	}
-
-	// for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
-	// 	cout << emp << "|" ;
-	// 	for(int dia = 0; dia < horizon; ++dia){
-	// 		cout << horario[emp][dia] << ",";
-	// 	}
-	// 	cout << "\n"; 
-	// }
 
 	return horario;
 	
@@ -699,14 +678,14 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
 						// cout << "restriccion maxima de dias trabajados no se cumple\n";
 						// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
 						++penalizaciones_empleado[count_trabajador];
-						satisfaction_sum += castigos[5]*abs(cont_dias_trabajados - MaxCT);
+						satisfaction_sum += castigos[5]*(cont_dias_trabajados - MaxCT);
 					}
 					// sexta restriccion [cantidad minima de dias trabajados consecutivos]
 					if(cont_dias_trabajados < MinCT){
 						// cout << "restriccion minima de dias trabajados no se cumple\n";
 						// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
 						++penalizaciones_empleado[count_trabajador];
-						satisfaction_sum += castigos[6]*abs(MinCT*cont_dias_trabajados);
+						satisfaction_sum += castigos[6]*(MinCT - cont_dias_trabajados);
 					}
 
 					cont_dias_trabajados = 0;
@@ -726,7 +705,7 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
 					if(cont_dias_libres < MinCDL){
 						// cout << "restriccion minima de dias libres no se cumple\n";
 						// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << dia << "\n" ;
-						satisfaction_sum += castigos[7]*abs(MinCDL - cont_dias_libres);
+						satisfaction_sum += castigos[7]*(MinCDL - cont_dias_libres);
 						++penalizaciones_empleado[count_trabajador];
 					}
 
@@ -749,13 +728,13 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
 				// cout << "restriccion maxima de dias trabajados no se cumple\n";
 				// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
 				++penalizaciones_empleado[count_trabajador];
-				satisfaction_sum += castigos[5]*abs(cont_dias_trabajados - MaxCT);
+				satisfaction_sum += castigos[5]*(cont_dias_trabajados - MaxCT);
 			}
 			else if(cont_dias_trabajados < MinCT){
 				// cout << "restriccion minima de dias trabajados no se cumple\n";
 				// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
 				++penalizaciones_empleado[count_trabajador];
-				satisfaction_sum += castigos[6]*abs(MinCT*cont_dias_trabajados);
+				satisfaction_sum += castigos[6]*(MinCT-cont_dias_trabajados);
 			}
 		}
 
@@ -764,7 +743,7 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
 			// cout << "restriccion minima de dias libres no se cumple\n";
 			// cout << "empleado: " << list_staff.get_staff_name(count_trabajador) << ", dia; " << horizon - 1 << "\n" ;
 			++penalizaciones_empleado[count_trabajador];
-			satisfaction_sum += castigos[7]*abs(MinCDL - cont_dias_libres);
+			satisfaction_sum += castigos[7]*(MinCDL - cont_dias_libres);
 		} 
 
 		// verificacion segunda restriccion
@@ -885,7 +864,7 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
 				}
 			}
 
-			sabado = sabado + 7;
+			sabado += 7;
 		}
 
 		if(contador_findes_trabajados > list_staff.get_MaxFD(empleado)){
@@ -984,8 +963,14 @@ void logs(string file_name, int restarts, int numero_vecinos,int iteraciones_sin
 int main () {
 
 	string str;
-	/* nombre de archivo por defecto */ 
-	string file_name = "Instance5.txt"; 
+
+	
+	// parametros del HC
+	string file_name = "Instance6.txt"; 
+	int restarts = 0;					// cantidad de restarts
+	int numero_vecinos = 100;			// cantidad de vecinos
+	int iteraciones_sin_mejora = 50;	// maximo de iteraciones sin encontrar una mejor solucion en los vecinos
+	double min = 10;					// maximo de minutos en la ejecucion
 	/* casos de prueba deben estar en la carpeta "Casos" */
 	std::ifstream file("Instances//"+file_name);
 
@@ -1177,51 +1162,46 @@ int main () {
 
 		cout << "Termino de parseo del archivo\n";
 
-		/* Termino de parseo del archivo*/
-
-
 		/* Comienzo de pruebas de soluciones */
 
 		// castigos para las soluciones infactibles
 		vector <int> castigos;
 		castigos.push_back(0);
 		// estos valores no cambian a lo largo de la ejecucion del programa
-		castigos.push_back(5000); // 1° restriccion		[restriccion de turnos seguidos]
-		castigos.push_back(3000); // 2° restriccion		[cantidad de turnos maxima]
-		castigos.push_back(500); // 3° restriccion		[tiempo maximo y minimo de tiempo por trabajador]
-		castigos.push_back(5000); // 4° restriccion		[dias libres]
+		castigos.push_back(1000); // 1° restriccion		[restriccion de turnos seguidos]
+		castigos.push_back(1000); // 2° restriccion		[cantidad de turnos maxima]
+		castigos.push_back(1000); // 3° restriccion		[tiempo maximo y minimo de tiempo por trabajador]
+		castigos.push_back(1000); // 4° restriccion		[dias libres]
 		castigos.push_back(1000); // 5° restriccion		[cantidad maxima de dias trabajados consecutivos]
 		castigos.push_back(1000); // 6° restriccion		[cantidad minima de dias trabajados consecutivos]
 		castigos.push_back(1000); // 7° restriccion		[cantidad de minima de dias libres consecutivos]
 		castigos.push_back(1000);  // 11° restriccion	[maximo de fines de semana trabajados]
 	
-		cout << "Inicio del HC\n";	
-
-		// parametros del HC
-		int restarts = 1;					// cantidad de restarts
-		int numero_vecinos = 10;			// cantidad de vecinos
-		int iteraciones_sin_mejora = 10;	// maximo de iteraciones sin encontrar una mejor solucion en los vecinos
-		double min = 15;					// maximo de minutos en la ejecucion
+		cout << "Caso de prueba: "<<file_name << endl; 
+		cout << "Numero de vecinos: "<<numero_vecinos << endl;
+		cout << "Iteraciones sin mejora: " << iteraciones_sin_mejora << endl;
+		cout << "Minutos: " << min << endl;	
+		cout << "Inicio del HC\n";
 
 		double time_limit = 60*min; // en segundos
 
 		int best_solution = -1;
 		vector <vector<string>> best_horario;
-		int rest = 0;
+		//int rest = 0;
 
 		clock_t start;
 		double duration;
 
 		start = clock();
 
-		while(rest < restarts && duration < time_limit){
+		while(duration < time_limit){
 			
 			vector <vector <string>> horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);;
 			int solution = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
 
 			int contador_sin_mejora = 0;
 
-			while(contador_sin_mejora < iteraciones_sin_mejora){
+			while(contador_sin_mejora < iteraciones_sin_mejora && duration < time_limit){
 				int best_solution_vecino = -1;
 				vector <vector<string>> best_vecino;
 
@@ -1240,10 +1220,14 @@ int main () {
 				if(best_solution_vecino < solution){
 					solution = best_solution_vecino;
 					horario = best_vecino;
+					contador_sin_mejora = 0;
 				}
 				else{
 					++contador_sin_mejora;
 				}
+
+				duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
+
 			}
 
 			if(solution < best_solution || best_solution == -1){
@@ -1252,9 +1236,10 @@ int main () {
 				cout << "best solution: " << best_solution << "\n";
 			}
 
-			++rest;
-
+			//++rest;
+			++ restarts;
 			duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
+
 		}
 
 		cout << "mejor solucion encontrada: " << best_solution << "\n";
