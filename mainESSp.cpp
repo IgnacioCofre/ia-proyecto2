@@ -1,7 +1,7 @@
 #include <fstream>		//lectura y escritura de archivos
 #include <iostream>
 #include <string>		
-#include <bits/stdc++.h>//conjuntos
+#include <algorithm>	//funcion find()
 #include <regex>		//parseo archivo
 #include <random>
 #include <cstdio>		//timer
@@ -1085,7 +1085,7 @@ int main () {
 	} else {
 
 		/* lista con las lineas del archivo */
-		list<string> list_aux;
+		vector <string> list_aux;
 		
 
 		while (std::getline(file,str))
@@ -1115,20 +1115,24 @@ int main () {
 		List_Staff staff_list;
 		Cover cover_list;
 
-		std::set<std::string> set_labels = {HORIZON, SHIFTS, STAFF, DAY_OFF, SHIFT_ON_REQUESTS, SHIFT_OFF_REQUESTS, COVER};
-		list<string>::iterator line;
+		//std::set<std::string> set_labels = {HORIZON, SHIFTS, STAFF, DAY_OFF, SHIFT_ON_REQUESTS, SHIFT_OFF_REQUESTS, COVER};
 		string label;
-		std::set<std::string>::iterator in_set_labels;
+		//std::set<std::string>::iterator in_set_labels;
+
+		vector <string> set_labels = {HORIZON, SHIFTS, STAFF, DAY_OFF, SHIFT_ON_REQUESTS, SHIFT_OFF_REQUESTS, COVER};
+
 
 		std::regex comas ("\\s*,\\s*");
 		std::regex spaces ("\\s");
 		std::regex separadores ("\\|");
 		std::regex equal ("=");
 
-		for(line = list_aux.begin(); line != list_aux.end(); line++)
+		for(auto line = list_aux.begin(); line != list_aux.end(); line++)
 		{
 
-			in_set_labels = set_labels.find(*line);
+			//in_set_labels = set_labels.find(*line);
+
+			auto in_set_labels = find(set_labels.begin(), set_labels.end(), *line);
 
 			if(in_set_labels != set_labels.end()){
 				label = *line;
@@ -1280,8 +1284,11 @@ int main () {
 		castigos.push_back(500); // 7° restriccion		[cantidad de minima de dias libres consecutivos]
 		castigos.push_back(500); // 11° restriccion		[maximo de fines de semana trabajados]
 	
-		if(default_configurtion != "n" || default_configurtion != "N"){
+		if(default_configurtion != "n" && default_configurtion != "N"){
 			cout << "\nConfiguracion por defecto:" << endl;
+		}
+		else{
+			cout << "\n";
 		}
 		
 		cout << "Caso de prueba:\t\t"<<file_name << endl; 
@@ -1340,9 +1347,7 @@ int main () {
 
 		double total_duration = (clock() - start ) / (double) CLOCKS_PER_SEC;	
 
-		cout<<"Tiempo de ejecucion: "<< total_duration << "[seg]" <<'\n';
-
-		cout << "Solucion promedio:" << sum_soluciones/100 << endl; 
+		cout<<"\nTiempo de ejecucion: "<< total_duration << "[seg]" <<'\n';
 
 		cout << "Mejor solucion encontrada: " << best_solution << "\n";
 
