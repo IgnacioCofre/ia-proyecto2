@@ -5,7 +5,8 @@
 #include <regex>		//parseo archivo
 #include <random>
 #include <cstdio>		//timer
-#include <ctime> 		//timer 	
+#include <ctime> 		//timer 
+#include <sstream>		//input 
 
 using namespace std;
 
@@ -425,7 +426,7 @@ int Model2(List_Turns list_turns, List_Staff list_staff, Cover cover, int horizo
 			// cout << "MaxM restriccion [Trabajador]: " << list_staff.get_staff_name(count_trabajador) <<"\n";  
 			// cout << "MaxM:   " << list_staff.get_MaxM(count_trabajador)<< "\n";
 			// cout << "tiempo: " <<  tiempo_trabajado << "\n";
-			satisfaction_sum += castigos[3];
+			satisfaction_sum += castigos[3]-600;
 		}
 
 		if(tiempo_trabajado < list_staff.get_MinM(count_trabajador)){
@@ -543,7 +544,7 @@ vector <vector <string>> horario_creation( List_Turns turns_list,List_Staff staf
 
 	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
 		for(int dia = 0; dia < horizon; ++dia){
-			if(free_day(rng) > 7){
+			if(free_day(rng) > 5){
 				new_horario[emp][dia] = "-";
 			}
 			else{
@@ -551,6 +552,8 @@ vector <vector <string>> horario_creation( List_Turns turns_list,List_Staff staf
 			}
 		}
 	}
+
+	//descomentar para incluir los libres obligatorios
 
 	// for(int emp = 0; emp < cantidad_empleados; ++emp){
 	// 	for(auto dia = days_off[emp].begin() ; dia != days_off[emp].end(); ++dia){
@@ -579,7 +582,7 @@ vector <vector <string>> iteration(List_Turns turn_list,List_Staff staff_list,Co
 
 	//cout << "actu:	"<< horario[staff][day] << endl;
 
-	if(free_day(rng) > 7){
+	if(free_day(rng) > 5){
 		if(horario[staff][day] == "-"){
 			horario[staff][day] = turn_names[turn];
 		}
@@ -882,21 +885,24 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
 	output << "#Calendario horizonte de " << horizon << " días:\n\n";  
 	output << "Empleados/Días\t";
 	for(int iter = 0 ; iter < horizon ; ++iter){
-		output << "|" << iter;
+		output << "|" << iter << "\t";
 	}
 	output << "\n";
 	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
 		output << list_staff.get_staff_name(emp) << "\t\t" ;
 		for(int dia = 0; dia < horizon; ++dia){
-			output << "|" << horario[emp][dia] ;
+			output << "|" << horario[emp][dia] << "\t" ;
 		}
 		output << "\n"; 
 	}
+
+	int penalizaciones_totales = 0;
 
 	output << "\n#Penalizaciones por empleado:\n\n";
 	for(int emp = 0 ; emp < cantidad_empleados ; ++emp){
 		output << list_staff.get_staff_name(emp) << "\t,\t" ;
 		output << penalizaciones_empleado[emp] << "\n";
+		penalizaciones_totales+= penalizaciones_empleado[emp];
 	}
 
 	output << "\nTabla de cobertura de turnos y penalización por dı́a:\n\n";
@@ -913,10 +919,16 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
 		}
 		output << "\n";
 	}
+
+	int costo_asignacion = 0;
+
 	output << "Costo\t\t";
 	for(int dia = 0; dia < horizon ; ++dia){
 		output << "|" << costos_por_dia[dia] << "\t";
+		costo_asignacion+= costos_por_dia[dia];
 	}
+
+	
 
 	output << "\n\n#Resumen información por empleado:\n";
 	output << "EmpleadoID, MaxT, MaxM, MinM, MaxCT, MinCT, MinCDL, MaxFD\n\n";
@@ -928,10 +940,13 @@ void archive_out(List_Turns list_turns, List_Staff list_staff, Cover cover, int 
 	}
 
   	output.close();
+
+	//cout << "Costo de asignacion: "<< costo_asignacion << endl;  
+	//cout << "Cantidad de penalizaciones: "<< penalizaciones_totales << endl;
 }
 
 // Funcion logs: escribe un archivo adicional [logs.txt] con infomacion de la ejecucion del algoritmo
-void logs(string file_name, int restarts, int numero_vecinos,int iteraciones_sin_mejora,int minutos_ejecucion, int best_solution, double total_duration){
+void logs(string file_name, int restarts, int numero_vecinos,int vecindarios, int best_solution, double total_duration){
 
 	// escritura de sobre archivo logs:
 	ifstream file("logs.txt");
@@ -942,7 +957,7 @@ void logs(string file_name, int restarts, int numero_vecinos,int iteraciones_sin
 
 	if(file.fail()){
 
-		logs << "Caso\t\tRest\tVecinos\t\tSin mejora\tMax tiempo[Min]\tResultado\tDuracion Total[seg]" << "\n";
+		logs << "Caso\t\tRest\tVecinos\t\tVecindarios\tResultado\tDuracion Total[seg]" << "\n";
 	}
 	
 	file.close();
@@ -951,8 +966,7 @@ void logs(string file_name, int restarts, int numero_vecinos,int iteraciones_sin
 	logs << file_name << "\t";
 	logs << restarts << "\t";
 	logs << numero_vecinos << "\t\t";
-	logs << iteraciones_sin_mejora << "\t\t";
-	logs << minutos_ejecucion << "\t\t";
+	logs << vecindarios << "\t\t";
 	logs << best_solution << "\t\t";
 	logs << total_duration << "\t";
 	logs << "\n" ;
@@ -963,19 +977,110 @@ void logs(string file_name, int restarts, int numero_vecinos,int iteraciones_sin
 int main () {
 
 	string str;
+	string input;
 
+	int number_instance;
+	int restarts;	
+	int numero_vecindarios;
+	int numero_vecinos;			
+
+	bool check_1 = true;
+	bool check_2 = true;
+	bool check_3 = true;
+	bool check_4 = true;
+
+	string file_name;
+	string default_configurtion;
+
+	cout << "Ejecutar la configuración por defecto? [y/n]: ";
+	getline(cin,input);
+	stringstream(input) >> default_configurtion;
+
+	if(default_configurtion == "n" || default_configurtion == "N"){
+		cout << "Escriba el número de la instacia a ejecutar" << endl <<  "[debe ser un número del 1 al 24]: " ;
+		getline(cin,input);
+		stringstream(input) >> number_instance;
+
+		if(0 < number_instance && number_instance < 25){
+			file_name = "Instance"+to_string(number_instance)+".txt";
+			check_1 = false;
+		}
+
+		while(check_1){
+			cout << "Escriba un número entre el 1 al 24: ";
+			getline(cin,input);
+			stringstream(input) >> number_instance;
+			if(0 < number_instance && number_instance < 25){
+				file_name = "Instance"+to_string(number_instance)+".txt";
+				check_1 = false;
+			}
+		}
+
+		cout << "Número de reinicios: ";
+		getline(cin,input);
+		stringstream(input) >> restarts;
+
+		if(0 <= restarts ){
+			check_2 = false;
+		}
+
+		while(check_2){
+			cout << "La cantidad de reinicios debe ser igual o mayor que 0: ";
+			getline(cin,input);
+			stringstream(input) >> restarts;
+			if(0 <= restarts ){
+				check_2 = false;
+			}
+		}
+
+		cout << "Número vecindarios a visitar: ";
+		getline(cin,input);
+		stringstream(input) >> numero_vecindarios;
+
+		if(0 < numero_vecindarios ){
+			check_3 = false;
+		}
+
+		while(check_3){
+			cout << "El número de vecindarios debe ser mayor que 0: ";
+			getline(cin,input);
+			stringstream(input) >> numero_vecindarios;
+			if(0 < numero_vecindarios ){
+				check_3 = false;
+			}
+		}
+
+		cout << "Número de vecinos por vecindario: ";
+		getline(cin,input);
+		stringstream(input) >> numero_vecinos;
+
+		if(0 < numero_vecinos ){
+			check_4 = false;
+		}
+
+		while(check_4){
+			cout << "El vecinos debe ser mayor que 0: ";
+			getline(cin,input);
+			stringstream(input) >> numero_vecinos;
+			if(0 < numero_vecinos ){
+				check_4 = false;
+			}
+		}
+	}
+
+	else{
+		// parametros [Default] del HC
+		file_name = "Instance5.txt"; 
+		restarts = 100;					// cantidad de restarts
+		numero_vecinos = 50;			// cantidad de vecinos
+		numero_vecindarios = 50;		// cantidad de vecindarios revisados
+
+	}
 	
-	// parametros del HC
-	string file_name = "Instance6.txt"; 
-	int restarts = 0;					// cantidad de restarts
-	int numero_vecinos = 100;			// cantidad de vecinos
-	int iteraciones_sin_mejora = 50;	// maximo de iteraciones sin encontrar una mejor solucion en los vecinos
-	double min = 10;					// maximo de minutos en la ejecucion
-	/* casos de prueba deben estar en la carpeta "Casos" */
 	std::ifstream file("Instances//"+file_name);
 
 	if(file.fail()){
-		cout << "caso de prueba no encontrado\n";
+		cout << "Instancia de prueba no encontrada\n";
 	
 	} else {
 
@@ -1160,48 +1265,46 @@ int main () {
 
 		}	
 
-		cout << "Termino de parseo del archivo\n";
-
 		/* Comienzo de pruebas de soluciones */
 
-		// castigos para las soluciones infactibles
+		// castigos para las soluciones infactibles [Jerarquia de prioridades]
 		vector <int> castigos;
 		castigos.push_back(0);
 		// estos valores no cambian a lo largo de la ejecucion del programa
-		castigos.push_back(1000); // 1° restriccion		[restriccion de turnos seguidos]
-		castigos.push_back(1000); // 2° restriccion		[cantidad de turnos maxima]
-		castigos.push_back(1000); // 3° restriccion		[tiempo maximo y minimo de tiempo por trabajador]
-		castigos.push_back(1000); // 4° restriccion		[dias libres]
-		castigos.push_back(1000); // 5° restriccion		[cantidad maxima de dias trabajados consecutivos]
-		castigos.push_back(1000); // 6° restriccion		[cantidad minima de dias trabajados consecutivos]
-		castigos.push_back(1000); // 7° restriccion		[cantidad de minima de dias libres consecutivos]
-		castigos.push_back(1000);  // 11° restriccion	[maximo de fines de semana trabajados]
+		castigos.push_back(800); // 1° restriccion		[restriccion de turnos seguidos]
+		castigos.push_back(500); // 2° restriccion		[cantidad de turnos maxima]
+		castigos.push_back(1300); // 3° restriccion		[tiempo maximo y minimo de tiempo por trabajador]
+		castigos.push_back(1500); // 4° restriccion		[dias libres]
+		castigos.push_back(500); // 5° restriccion		[cantidad maxima de dias trabajados consecutivos]
+		castigos.push_back(500); // 6° restriccion		[cantidad minima de dias trabajados consecutivos]
+		castigos.push_back(500); // 7° restriccion		[cantidad de minima de dias libres consecutivos]
+		castigos.push_back(500); // 11° restriccion		[maximo de fines de semana trabajados]
 	
-		cout << "Caso de prueba: "<<file_name << endl; 
-		cout << "Numero de vecinos: "<<numero_vecinos << endl;
-		cout << "Iteraciones sin mejora: " << iteraciones_sin_mejora << endl;
-		cout << "Minutos: " << min << endl;	
-		cout << "Inicio del HC\n";
-
-		double time_limit = 60*min; // en segundos
+		if(default_configurtion != "n" || default_configurtion != "N"){
+			cout << "\nConfiguracion por defecto:" << endl;
+		}
+		
+		cout << "Caso de prueba:\t\t"<<file_name << endl; 
+		cout << "Cantidad de Restarts:\t" << restarts << endl;	
+		cout << "Numero de vecindarios:\t" << numero_vecindarios << endl;
+		cout << "Numero de vecinos:\t"<<numero_vecinos << endl;
+		
+		cout << "\nInicio del HC-BI\n" << endl ;
 
 		int best_solution = -1;
 		vector <vector<string>> best_horario;
-		//int rest = 0;
-
 		clock_t start;
-		double duration;
+		double sum_soluciones = 0;
 
 		start = clock();
+		// double Total_time = minutos * 60;
 
-		while(duration < time_limit){
-			
+		for(auto rest = 0; rest <= restarts ; ++rest){
+				
 			vector <vector <string>> horario = horario_creation(turn_shifts,staff_list, cover_list, Horizon);;
 			int solution = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,horario);
 
-			int contador_sin_mejora = 0;
-
-			while(contador_sin_mejora < iteraciones_sin_mejora && duration < time_limit){
+			for(int vecindarios = 0; vecindarios < numero_vecindarios ; ++vecindarios ){
 				int best_solution_vecino = -1;
 				vector <vector<string>> best_vecino;
 
@@ -1209,7 +1312,7 @@ int main () {
 
 					vector <vector <string>> new_horario = iteration(turn_shifts,staff_list, cover_list, Horizon, horario);
 					int solution_vecino = Model2(turn_shifts, staff_list, cover_list, Horizon, castigos,new_horario);
-					//cout << solution_vecino << "\n";
+
 					if(solution_vecino < best_solution_vecino || best_solution_vecino == -1){
 						best_vecino = new_horario;
 						best_solution_vecino = solution_vecino;
@@ -1220,37 +1323,31 @@ int main () {
 				if(best_solution_vecino < solution){
 					solution = best_solution_vecino;
 					horario = best_vecino;
-					contador_sin_mejora = 0;
 				}
-				else{
-					++contador_sin_mejora;
-				}
-
-				duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
 
 			}
+
+			// promedio de mejores soluciones encontradas por vecindario 
+			sum_soluciones+=solution;
 
 			if(solution < best_solution || best_solution == -1){
 				best_solution = solution;
 				best_horario = horario;
-				cout << "best solution: " << best_solution << "\n";
+				cout << "Current best solution: " << best_solution << "\n";
 			}
-
-			//++rest;
-			++ restarts;
-			duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
 
 		}
 
-		cout << "mejor solucion encontrada: " << best_solution << "\n";
-		archive_out(turn_shifts, staff_list, cover_list, Horizon, castigos,best_horario);
-
-		double total_duration = (clock() - start ) / (double) CLOCKS_PER_SEC;
+		double total_duration = (clock() - start ) / (double) CLOCKS_PER_SEC;	
 
 		cout<<"Tiempo de ejecucion: "<< total_duration << "[seg]" <<'\n';
 
-		logs(file_name,restarts,numero_vecinos,iteraciones_sin_mejora,min,best_solution,total_duration);
+		cout << "Solucion promedio:" << sum_soluciones/100 << endl; 
 
+		cout << "Mejor solucion encontrada: " << best_solution << "\n";
+
+		archive_out(turn_shifts, staff_list, cover_list, Horizon, castigos,best_horario);
+		logs(file_name,restarts,numero_vecinos,numero_vecindarios,best_solution,total_duration);
 
 	}
 
